@@ -481,7 +481,7 @@ POST `/appacademy/api/clear` accepts cross-origin form with empty body to wipe p
 
 ### #142 — $10,000 — Alva Radian — `cloud.withgoogle.com/next/` XSS via Identity Toolkit signup `displayName` (escape encoded payload in burp before forward).
 
-### #143 — $10,000 — Stored XSS in Kaggle datasets discussion via `$$ \unicode{<img src=1 onerror=alert(document.cookie)//} $$` (CSP-bypassed by browser flag in PoC; demonstrates injection).
+### #143 — 10,000 — Stored XSS in Kaggle datasets discussion via `$$ \unicode{< img src=1 onerror=alert(document.cookie)//} $$`  CSP-bypassed by browser flag in PoC; demonstrates injection).
 
 ### #144 — $10,000 — Gaurav Bhatia — `support.google.com/android/thread/` Exif geolocation not stripped from uploaded community images.
 

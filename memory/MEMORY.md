@@ -12,3 +12,4 @@
 - [BugCrowd Bug Bounty Skills](reference_bugcrowd_skills.md) — Skills reales de reportes BugCrowd: XSS via .doc/.svg en iOS, CVE-2018-0296 Cisco ASA, Firebase APK recon, default creds network gear, email domain spoofing SaaS.
 - [Google Bug Hunters Skills](reference_bughunters_skills.md) — Skills reales de Google VRP: Cloud Shell root takeover via XSS + LFI + container escape + SSH key exfiltration.
 - [Google VRP Public Hall-of-Fame Skills](reference_google_vrp_public_hof.md) — All 201 public Google VRP / Cloud VRP / OSS VRP / Mobile VRP reports ingested in English; bug-class catalog, top patterns, per-report skills.
+- [Shodan Reconnaissance](reference_shodan_recon.md) — CLI / REST / InternetDB / alert workflows, filter syntax, credit costs, paid vs free features. Active scans require explicit user confirmation per `feedback_no_auto_requests.md`.
