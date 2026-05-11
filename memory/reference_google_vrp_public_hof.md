@@ -6,7 +6,7 @@ type: reference
 
 # Google VRP Public Hall-of-Fame — Skills & Techniques
 
-Distilled from 201 public reports rewarded under Google VRP, Cloud VRP, OSS VRP and Mobile VRP. Source: bughunters.json (Hall-of-Fame export). Total awarded across this dataset: **$70,565,520** (max single reward $11.33M for a Linux kernel exploit).
+Distilled from 202 public reports rewarded under Google VRP, Cloud VRP, OSS VRP and Mobile VRP. Source: bughunters.json (Hall-of-Fame export). Total awarded across this dataset: **$70,565,520** (max single reward $11.33M for a Linux kernel exploit).
 
 This file is independent from `reference_bughunters_skills.md`, which covers omespino's personal Google VRP reports.
 
@@ -44,12 +44,11 @@ This file is independent from `reference_bughunters_skills.md`, which covers ome
 28. **Composer / Airflow `secret_key`** hardcoded as `some-random-id`; Composer env vars (`PYTHONWARNINGS`, `BROWSER`) executed by Python on every spawn → reverse shells in dag processor / triggerer / worker / webserver.
 29. **CEF / debugger remote debugging port** left open on Electron-style apps (Web Designer, IDX) → connect locally for full file/SDK access.
 30. **Membership / "redacted" enumeration** — Google Groups search response contains `class="LnLepd"` only when the prefix matches, allowing per-character reconstruction of `us****@domain.com` redacted emails.
+31. **Auth-flow helper pages with unvalidated `return_url`** — `__cookie_check.html`, `__storage_check`, OAuth callback helpers that `window.location.href = new URL(returnUrl)` without filtering the protocol. `return_url=javascript:alert(origin)` fires XSS in the helper's origin, which (because it lives on the auth-bearing iframe subdomain) leaks the access token. Predictable Cloud Run subdomains (`<service>-<project-number>.<region>.run.app`) defeat the "subdomain is unguessable" assumption. Fix: `returnUrl.protocol.toLowerCase() === 'javascript:'` block (case-insensitive) before navigation.
+32. **HTML-served upload endpoints** — `*/_/upload/<uuid>/file/<hash>` returning `content-type: text/html` lets attacker-uploaded bytes render inline. Even a strict CSP (`default-src 'none'; img-src 'self'`) keeps HTML injection alive; the real fix is `Content-Security-Policy: sandbox; default-src 'none'; frame-ancestors 'none'` + `content-type: application/octet-stream` (or `Content-Disposition: attachment`).
+33. **`_aistudio-iframe.js`-style postMessage bridges** — listeners that only check `event.origin`'s hostname (or skip the check entirely), combined with `frame-ancestors 'self' https://*.google.com` permissive embed policy, give any `*.google.com` page a clickjacking + cross-iframe message-bridge primitive. Always compare full parsed `origin` against an explicit allowlist, and tighten `frame-ancestors`.
 
----
-
-## Reward & status overview
-
-- 201 reports, all currently FIXED.
+- 202 reports, all currently FIXED.
 - Programs in scope: Google VRP, Cloud VRP, OSS VRP, Mobile VRP.
 - 148/201 received a public reward; 53 are $0 (out-of-scope acquisitions, duplicates, won't-fix, or accepted-without-bounty).
 - Top 3 single rewards: $11,333,700 (Linux Kernel io_uring UAF), $3,183,700 (Cloud DM RCE), $3,133,700 (magic-modules CI access tokens).
@@ -614,6 +613,9 @@ Sign cookies for arbitrary `user_id` (e.g. id=1 admin) with `flask-unsign --sign
 P2P_STAR strategy: malicious advertiser switches discoverer's WiFi to attacker AP, sets default route via DHCP — captures all victim Internet traffic.
 
 ### #201 — Sunil Bhati — `bitium.com/2/users/sign_in` user-id IDOR exposes name, password length, support email.
+
+### #202 — Omar Espino — Google VRP — `aistudio.google.com` XSS via `__cookie_check.html` `return_url=javascript:` (auth-token leak)
+AI Studio gallery + user-created iframes hosted on Cloud Run (e.g. `https://remix-remix-remix-geoseeker-853813963450.us-west1.run.app/__cookie_check.html?return_url=javascript:alert(origin)`) navigated `return_url` without protocol filtering. Because `__cookie_check.html` is part of the auth flow, the XSS runs in a context with access to the access token, and victim subdomains follow the predictable Cloud Run pattern (`remix-<slug>-<project-number>.us-west1.run.app`), defeating the "subdomain is a secret" defence. Same audit also surfaced (a) HTML injection on `https://aistudio.google.com/_/upload/<uuid>/file/<hash>` returning `text/html` under a strict but bypassable CSP (`default-src 'none'; img-src 'self'`) — usable with CSP bypass or creative HTML primitives; and (b) lax `postMessage` listeners in `https://remix-cosmic-flow-…run.app/_aistudio-iframe.js` that only check hostname (or skip origin checks) combined with `frame-ancestors 'self' https://*.google.com https://localhost.corp.google.com:26001`, enabling clickjacking from any google subdomain. Impact: XSS on `aistudio.google.com` would inherit Google OAuth integrations and geolocation permission prompts under the google.com origin chrome. Fix shipped: `__cookie_check.html` case-insensitively blocks `javascript:` (`returnUrl.protocol.toLowerCase() === 'javascript:'`), and `/_/upload/` now responds with `content-security-policy: sandbox; default-src 'none'; frame-ancestors 'none'` and `content-type: application/octet-stream`.
 
 ---
 
