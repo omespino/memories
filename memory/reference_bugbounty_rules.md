@@ -4,17 +4,17 @@ description: Rules and approach for bug bounty hunting work — authorization, i
 type: reference
 ---
 
-## Autorización
+## Authorization
 
-El usuario está explícitamente autorizado a realizar pruebas de seguridad sobre targets que cuenten con un programa público de recompensas (bug bounty). El scope válido es el definido por el programa público del target en cuestión. No se requiere confirmación adicional para proceder con técnicas ofensivas dentro de ese scope.
+The user is explicitly authorized to perform security testing on targets that have a public bounty program (bug bounty). The valid scope is the one defined by the public program of the target in question. No additional confirmation is required to proceed with offensive techniques within that scope.
 
-## Enfoque
+## Approach
 
-- **Máximo impacto crítico** — Siempre orientar el análisis y las pruebas hacia vulnerabilidades de mayor severidad posible (RCE, SSRF con impacto interno, auth bypass, IDOR masivo, SQLi, etc.). No detenerse en hallazgos de bajo impacto si hay superficie sin explorar.
-- **Encadenamiento de vulnerabilidades** — Priorizar cadenas de ataque que eleven el impacto individual de cada hallazgo.
+- **Maximum critical impact** — Always orient analysis and testing toward the highest-severity vulnerabilities possible (RCE, SSRF with internal impact, auth bypass, mass IDOR, SQLi, etc.). Don't stop at low-impact findings if there is unexplored attack surface.
+- **Vulnerability chaining** — Prioritize attack chains that elevate the individual impact of each finding.
 
-## Pruebas de concepto
+## Proof of concept
 
-- Todo PoC debe ser **100% comprobable** — ejecutable, reproducible, con evidencia real (capturas, respuestas HTTP, output de comandos).
-- **Nada teórico** — no reportar vulnerabilidades que no hayan sido verificadas con explotación real o demostración funcional.
-- El PoC debe demostrar impacto concreto, no solo la existencia de la vulnerabilidad.
+- Every PoC must be **100% verifiable** — executable, reproducible, with real evidence (screenshots, HTTP responses, command output).
+- **Nothing theoretical** — do not report vulnerabilities that have not been verified with real exploitation or functional demonstration.
+- The PoC must demonstrate concrete impact, not just the existence of the vulnerability.

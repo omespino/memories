@@ -4,13 +4,13 @@ description: Claude must never execute HTTP requests or any network interaction 
 type: feedback
 ---
 
-**Regla:** Nunca ejecutar requests HTTP, DNS, TCP, o cualquier tipo de interacción de red de forma automática o por iniciativa propia.
+**Rule:** Never execute HTTP, DNS, TCP, or any kind of network interaction requests automatically or on your own initiative.
 
-**Why:** El usuario quiere control total sobre qué tráfico se genera. Requests no autorizados pueden alertar WAFs, IDS/IPS, dejar logs en el target, o salirse del scope sin querer.
+**Why:** The user wants total control over what traffic is generated. Unauthorized requests can alert WAFs, IDS/IPS, leave logs on the target, or unintentionally fall outside the scope.
 
 **How to apply:**
-- Ante cualquier escenario de explotación, presentar primero el escenario teórico completo: endpoint, método, headers, payload, impacto esperado.
-- Esperar confirmación explícita del usuario ("ejecuta esto", "corre esto", "prueba esto") antes de lanzar cualquier comando que genere tráfico de red.
-- Esto aplica a: curl, wget, requests Python, herramientas como sqlmap, ffuf, nmap, nuclei, nikto, nessus, burp en modo activo, etc.
-- En modo teórico: mostrar el comando exacto listo para copiar/pegar, con flags y payload completo, pero no ejecutarlo.
-- Nunca encadenar requests automáticamente aunque el paso anterior haya sido aprobado; cada interacción de red requiere aprobación individual.
+- For any exploitation scenario, first present the complete theoretical scenario: endpoint, method, headers, payload, expected impact.
+- Wait for explicit confirmation from the user ("execute this", "run this", "test this") before launching any command that generates network traffic.
+- This applies to: curl, wget, Python requests, tools such as sqlmap, ffuf, nmap, nuclei, nikto, nessus, Burp in active mode, etc.
+- In theoretical mode: show the exact command ready to copy/paste, with full flags and payload, but do not execute it.
+- Never chain requests automatically even if the previous step was approved; each network interaction requires individual approval.

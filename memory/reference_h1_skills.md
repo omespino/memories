@@ -4,186 +4,186 @@ description: Skills and techniques derived from omespino's real HackerOne report
 type: reference
 ---
 
-## Perfil de hallazgos (HackerOne)
+## Findings profile (HackerOne)
 
-- **Total reportes:** 43
-- **Resueltos (confirmados):** 9 — Slack, Yahoo Mail, Twitter, Criteo (x3), MercadoLibre (x2), Reddit
-- **Programas:** Bug Bounty públicos + Live Hacking Events (LHE BugCon MX, LHE-MLM-2022)
+- **Total reports:** 43
+- **Resolved (confirmed):** 9 — Slack, Yahoo Mail, Twitter, Criteo (x3), MercadoLibre (x2), Reddit
+- **Programs:** Public Bug Bounty + Live Hacking Events (LHE BugCon MX, LHE-MLM-2022)
 
 ---
 
-## Skills confirmados (reportes resueltos)
+## Confirmed skills (resolved reports)
 
-### 1. Stored XSS via file upload — SVG/XML en apps iOS
-Técnica propia con múltiples resoluciones (Slack, Yahoo Mail).
-- Subir archivos `.xml` o `.svg` con payload embebido
-- El vector se activa cuando la app iOS renderiza el archivo en un webview o "raw view"
-- Payload base: `<svg onload="prompt(document.domain);" xmlns="http://www.w3.org/2000/svg"></svg>`
-- Variante: `<svg><script>prompt(document.location)</script></svg>` dentro de XML
-- **Targets ideales:** Apps móviles con visor de archivos adjuntos, plataformas de mensajería, webmail iOS
+### 1. Stored XSS via file upload — SVG/XML in iOS apps
+Original technique with multiple resolutions (Slack, Yahoo Mail).
+- Upload `.xml` or `.svg` files with embedded payload
+- The vector triggers when the iOS app renders the file in a webview or "raw view"
+- Base payload: `<svg onload="prompt(document.domain);" xmlns="http://www.w3.org/2000/svg"></svg>`
+- Variant: `<svg><script>prompt(document.location)</script></svg>` inside XML
+- **Ideal targets:** Mobile apps with attachment file viewers, messaging platforms, iOS webmail
 
 ### 2. Content moderation / URL filter bypass — ASCII homoglyphs
-Técnica con 2 resoluciones independientes (MercadoLibre, Reddit).
-- Reemplazar caracteres de URLs con equivalentes Unicode/ASCII encirculados: `bⒾt.lⓎ` en lugar de `bit.ly`
-- Funciona contra filtros de Bitly, TinyURL y dominios prohibidos en sistemas de mensajería y posts
-- **Targets ideales:** Sistemas de moderación de contenido, plataformas de e-commerce con mensajería interna, redes sociales
+Technique with 2 independent resolutions (MercadoLibre, Reddit).
+- Replace URL characters with circled Unicode/ASCII equivalents: `bⒾt.lⓎ` instead of `bit.ly`
+- Works against Bitly, TinyURL filters and forbidden domains in messaging systems and posts
+- **Ideal targets:** Content moderation systems, e-commerce platforms with internal messaging, social networks
 
-### 3. SSRF en webhooks / IPN notifications
-Resolución en MercadoLibre (Mercado Pago IPN).
-- Vector: endpoint de configuración de webhooks que realiza HTTP POST sin filtrar destinos internos
-- Probar: `http://localhost`, `http://127.0.0.1`, `http://169.254.169.254` (AWS metadata), `http://0.0.0.0`
-- **Targets ideales:** Paneles de desarrollador con webhooks, sistemas de notificación de pagos (IPN), integraciones de terceros
+### 3. SSRF in webhooks / IPN notifications
+Resolution at MercadoLibre (Mercado Pago IPN).
+- Vector: webhook configuration endpoint that performs HTTP POST without filtering internal destinations
+- Test: `http://localhost`, `http://127.0.0.1`, `http://169.254.169.254` (AWS metadata), `http://0.0.0.0`
+- **Ideal targets:** Developer panels with webhooks, payment notification systems (IPN), third-party integrations
 
 ### 4. Subdomain takeover — Heroku dangling CNAME
-Resolución en Criteo (video.criteo.com).
-- Identificar subdominios que apuntan a instancias Heroku no reclamadas
-- Crear app en Heroku y asociar el CNAME para tomar control
-- **Herramientas:** `subfinder`, `dnsx`, `nuclei -t takeovers/`
-- **Targets ideales:** Empresas con múltiples subdominios legacy; verificar también AWS S3, Azure, GitHub Pages
+Resolution at Criteo (video.criteo.com).
+- Identify subdomains pointing to unclaimed Heroku instances
+- Create app on Heroku and associate the CNAME to take control
+- **Tools:** `subfinder`, `dnsx`, `nuclei -t takeovers/`
+- **Ideal targets:** Companies with multiple legacy subdomains; also check AWS S3, Azure, GitHub Pages
 
 ### 5. Credential exposure via GitHub recon
-Resolución en Criteo (credenciales FTP en repositorio público).
-- Buscar en GitHub: `org:target filename:.env`, `org:target password ftp`, `org:target api_key`
-- Validar credenciales encontradas antes de reportar
-- **Herramientas:** GitHub dorks, `trufflehog`, `gitleaks`
+Resolution at Criteo (FTP credentials in public repository).
+- Search on GitHub: `org:target filename:.env`, `org:target password ftp`, `org:target api_key`
+- Validate found credentials before reporting
+- **Tools:** GitHub dorks, `trufflehog`, `gitleaks`
 
-### 6. Known CVE exploitation — Path traversal en Cisco ASA
-Resolución en Criteo (CVE-2018-0296).
-- Identificar versiones de software en superficie de ataque
-- Explotar CVEs públicos con PoC disponible (ej. `github.com/yassineaboukir/CVE-2018-0296`)
-- **Workflow:** nmap → fingerprint de versión → buscar CVE → PoC → validar
+### 6. Known CVE exploitation — Path traversal in Cisco ASA
+Resolution at Criteo (CVE-2018-0296).
+- Identify software versions on the attack surface
+- Exploit public CVEs with available PoC (e.g. `github.com/yassineaboukir/CVE-2018-0296`)
+- **Workflow:** nmap → version fingerprint → search CVE → PoC → validate
 
 ### 7. SSL/TLS legacy protocol detection
-Resolución en Twitter (POODLE SSLv3 en servidores SMTP).
-- Comando: `nmap -sV --script ssl-poodle -p 25,443,465,587 <target>`
-- Buscar también: SWEET32 (3DES), SSLv2, TLS 1.0/1.1 en servicios no-HTTP
-- **Targets ideales:** Servidores de correo, VPNs, servicios internos expuestos
+Resolution at Twitter (POODLE SSLv3 on SMTP servers).
+- Command: `nmap -sV --script ssl-poodle -p 25,443,465,587 <target>`
+- Also look for: SWEET32 (3DES), SSLv2, TLS 1.0/1.1 on non-HTTP services
+- **Ideal targets:** Mail servers, VPNs, exposed internal services
 
 ---
 
-## Skills adicionales (reportes no resueltos pero con técnica válida)
+## Additional skills (unresolved reports but with valid technique)
 
 ### Mobile app secret extraction
-- Descompilar APKs con `apktool` o `jadx` para extraer API keys hardcodeadas
-- SDKs encontrados expuestos: Twitter, LinkedIn, Filestack, finAPI, Pilgrim (Foursquare), Comscore
-- Aplica también a IPA (iOS): descomprimir con `unzip`, buscar strings en binario
-- **Herramientas:** `jadx`, `apktool`, `strings`, `grep -r "api_key\|secret\|token" ./`
+- Decompile APKs with `apktool` or `jadx` to extract hardcoded API keys
+- Exposed SDKs found: Twitter, LinkedIn, Filestack, finAPI, Pilgrim (Foursquare), Comscore
+- Also applies to IPA (iOS): unzip with `unzip`, search strings in binary
+- **Tools:** `jadx`, `apktool`, `strings`, `grep -r "api_key\|secret\|token" ./`
 
-### XSS via Office files — javascript: URI en hyperlinks
-- Crear archivo PPT/PPTX con hipervínculo apuntando a `javascript:prompt(document.cookie)`
-- Guardar como "Slide Show" (.ppsx) y subir como adjunto
-- El vector se activa cuando la plataforma renderiza o sirve el archivo sin sanitizar
-- Identificado en Slack (files.slack.com)
+### XSS via Office files — javascript: URI in hyperlinks
+- Create PPT/PPTX file with hyperlink pointing to `javascript:prompt(document.cookie)`
+- Save as "Slide Show" (.ppsx) and upload as attachment
+- The vector triggers when the platform renders or serves the file without sanitizing
+- Identified at Slack (files.slack.com)
 
 ### XSS via data URI base64
-- Inyectar contenido via `data:text/html;base64,<payload>` en parámetros de URL o campos de archivo
-- Útil cuando SVG/XML están filtrados pero data URIs no
-- Identificado en hackerone-attachments.s3.amazonaws.com
+- Inject content via `data:text/html;base64,<payload>` in URL parameters or file fields
+- Useful when SVG/XML are filtered but data URIs are not
+- Identified at hackerone-attachments.s3.amazonaws.com
 
-### SSRF via parámetro de imagen / URL externa
-- Parámetros de productos o avatares que aceptan URL de imagen pueden hacer requests internos
-- Probar: `http://localhost`, `http://127.0.0.1:<puerto>` para port scan interno
-- Identificado en Shopify (my-store.myshopify.com products image)
+### SSRF via image parameter / external URL
+- Product or avatar parameters that accept image URL can make internal requests
+- Test: `http://localhost`, `http://127.0.0.1:<port>` for internal port scan
+- Identified at Shopify (my-store.myshopify.com products image)
 
-### SSRF bypass con IPv6 payloads
-- Cuando filtros bloquean IPs en IPv4, probar variantes IPv6: `http://[::1]`, `http://[::ffff:127.0.0.1]`
-- Identificado como bypass del reporte SSRF en MercadoPago IPN (#1350652)
+### SSRF bypass with IPv6 payloads
+- When filters block IPs in IPv4, try IPv6 variants: `http://[::1]`, `http://[::ffff:127.0.0.1]`
+- Identified as bypass of the SSRF report on MercadoPago IPN (#1350652)
 
 ### Authentication bypass via trailing slash
-- Agregar `/` al final de URLs protegidas por basic auth puede omitir la validación
+- Adding `/` at the end of URLs protected by basic auth can skip validation
 - `https://target.com/dashboard` → `https://target.com/dashboard/`
-- Identificado en Zomato (send.zomato.com)
+- Identified at Zomato (send.zomato.com)
 
 ### 2FA session persistence — logical flaw
-- Las sesiones activas en otros dispositivos permanecen válidas al activar 2FA
-- Impacto: un atacante con sesión previa robada mantiene acceso aunque víctima active 2FA
-- Identificado en HackerOne
+- Active sessions on other devices remain valid when 2FA is enabled
+- Impact: an attacker with a previously stolen session keeps access even if the victim enables 2FA
+- Identified at HackerOne
 
 ### GraphQL information disclosure
-- Usuarios baneados/deshabilitados siguen siendo accesibles via objeto `User` en GraphQL
-- Probar introspection completa + acceso a campos de objetos de otros usuarios sin autenticación
-- Identificado en HackerOne
+- Banned/disabled users remain accessible via the `User` object in GraphQL
+- Test full introspection + access to other users' object fields without authentication
+- Identified at HackerOne
 
 ### Metadata / information disclosure
-- PDFs pueden contener rutas internas, nombres de usuario, software usado — `exiftool archivo.pdf`
-- Endpoints de staging/API que exponen: gems con versiones, variables de entorno, estructura de endpoints
-- Servidores Exchange/OWA filtran IPs internas del CAS en headers de respuesta
-- **Herramientas:** `exiftool`, `strings`, revisar headers `X-*` y `Received:`
+- PDFs may contain internal paths, usernames, software used — `exiftool file.pdf`
+- Staging/API endpoints exposing: gems with versions, environment variables, endpoint structure
+- Exchange/OWA servers leak internal CAS IPs in response headers
+- **Tools:** `exiftool`, `strings`, check `X-*` and `Received:` headers
 
 ### WAF bypass — SQLi via case manipulation
-- Variar mayúsculas/minúsculas en parámetros para evadir reglas WAF basadas en firmas
-- Identificado en Zomato (`client_manage_handler.php`)
+- Vary upper/lowercase in parameters to evade signature-based WAF rules
+- Identified at Zomato (`client_manage_handler.php`)
 
 ### Mobile authentication bypass
-- Fuerza bruta local de PIN de 4 dígitos sin rate limiting (0000–9999)
-- Bypass via opción "Forgot PIN" sin validación adicional
-- Identificado en Pornhub Android (brute force) y Ashley Madison Android (forgot pin)
+- Local brute force of 4-digit PIN without rate limiting (0000–9999)
+- Bypass via "Forgot PIN" option without additional validation
+- Identified at Pornhub Android (brute force) and Ashley Madison Android (forgot pin)
 
 ### RCE via exposed SSH private key on GitHub
-- GitHub dork en repos de empleados: `filename:id_rsa`, `filename:config Host`
-- Descargar key + config SSH de repos públicos de empleados → acceso directo a instancias EC2
-- Identificado en Lyft (empleado con key y config en repo público)
+- GitHub dork in employee repos: `filename:id_rsa`, `filename:config Host`
+- Download key + SSH config from public employee repos → direct access to EC2 instances
+- Identified at Lyft (employee with key and config in public repo)
 
 ### Known CVE — Pulse Secure VPN arbitrary file read
-- CVE-2019-11510: lectura arbitraria de archivos sin autenticación en Pulse Secure VPN
-- Identificar instancias con nmap/shodan, aplicar exploit público
-- **Herramientas:** `nuclei -t cves/2019/CVE-2019-11510.yaml`
+- CVE-2019-11510: arbitrary file read without authentication in Pulse Secure VPN
+- Identify instances with nmap/shodan, apply public exploit
+- **Tools:** `nuclei -t cves/2019/CVE-2019-11510.yaml`
 
 ### SSL/TLS — SWEET32 (3DES)
-- CVE-2016-2183: ciphers 3DES en TLS/SSL/IPSec — birthday attack en sesiones largas
-- Detectar con: `nmap --script ssl-enum-ciphers -p 443,8443 <target>` y buscar `3DES`
-- Identificado en Juniper SSL VPN de Twitter
+- CVE-2016-2183: 3DES ciphers in TLS/SSL/IPSec — birthday attack on long sessions
+- Detect with: `nmap --script ssl-enum-ciphers -p 443,8443 <target>` and look for `3DES`
+- Identified at Twitter Juniper SSL VPN
 
-### FTP anonymous login / credenciales expuestas
-- Probar login anónimo en puertos FTP no estándar (2121, 2020, etc.)
-- Combinar con GitHub recon para encontrar credenciales FTP válidas en repos públicos
-- Identificado en Zomato (anónimo) y Criteo (credenciales reales en GitHub)
+### Anonymous FTP login / exposed credentials
+- Test anonymous login on non-standard FTP ports (2121, 2020, etc.)
+- Combine with GitHub recon to find valid FTP credentials in public repos
+- Identified at Zomato (anonymous) and Criteo (real credentials on GitHub)
 
 ### Exposed internal API structure
-- Endpoints de API sin auth que listan rutas, métodos, parámetros y estructura interna
-- Buscar: `/api/`, `/api/v1/`, `/swagger`, `/graphql`, endpoints de staging sin proteger
-- Identificado en Twitter (jss.svc.twttr.com:8443/api/) y Shipt (staging)
+- API endpoints without auth that list routes, methods, parameters and internal structure
+- Look for: `/api/`, `/api/v1/`, `/swagger`, `/graphql`, unprotected staging endpoints
+- Identified at Twitter (jss.svc.twttr.com:8443/api/) and Shipt (staging)
 
 ### Exposed registration on internal apps
-- Endpoints de registro sin protección en aplicaciones internas o de empleados
-- Permite crear cuenta y acceder a funcionalidad interna
-- Identificado en Sony (tekzone.spe.sony.com)
+- Unprotected registration endpoints on internal or employee applications
+- Allows account creation and access to internal functionality
+- Identified at Sony (tekzone.spe.sony.com)
 
-### Information disclosure via logs públicos
-- Instancias de herramientas de gestión (McAfee, etc.) con logs accesibles públicamente
-- Identificado en Sony (snap.sel.sony.com — McAfee Agent Activity logs)
+### Information disclosure via public logs
+- Management tool instances (McAfee, etc.) with publicly accessible logs
+- Identified at Sony (snap.sel.sony.com — McAfee Agent Activity logs)
 
-### Link shortener — resource enumeration e information disclosure
-- Iterar o predecir URLs en servicios de shortener internos para descubrir recursos privados
-- Identificado en Twitter t.co — link a Google Hangouts de reunión interna de staff accesible públicamente
-- Vector separado: DoS al shortener saturando requests hacia t.co — identificado en Twitter
+### Link shortener — resource enumeration and information disclosure
+- Iterate or predict URLs in internal shortener services to discover private resources
+- Identified at Twitter t.co — link to internal Google Hangouts staff meeting publicly accessible
+- Separate vector: DoS to the shortener by saturating requests to t.co — identified at Twitter
 
 ### XML Billion Laughs / DoS via entity expansion (LoLbillion)
-- Subir archivo XML con entidades anidadas recursivas que explotan en memoria al parsear
-- Causa DoS en el servidor que procesa el XML sin límite de expansión
-- Payload clásico: entidades que se expanden exponencialmente (`&lol9;` → millones de chars)
-- Identificado en hackerone-attachments.s3.amazonaws.com (combinado con XSS via data URI)
+- Upload XML file with recursive nested entities that explode in memory when parsed
+- Causes DoS on the server processing the XML without expansion limit
+- Classic payload: entities that expand exponentially (`&lol9;` → millions of chars)
+- Identified at hackerone-attachments.s3.amazonaws.com (combined with XSS via data URI)
 
 ### Private program enumeration via platform features
-- En HackerOne: al hacer upvote en un reporte de programa privado, el hunter es visible para otros
-- Permite descubrir qué otros hunters están invitados al mismo programa privado
-- Buscar features de "reacción", "upvote" o "follow" que exponen participantes de programas privados
+- On HackerOne: when upvoting a private program report, the hunter is visible to others
+- Allows discovery of which other hunters are invited to the same private program
+- Look for "react", "upvote" or "follow" features that expose private program participants
 
 ### Missing security notification — account changes
-- Cambio de email/contraseña sin notificación al usuario (email de confirmación ausente o incompleto)
-- Permite a atacante que tomó la cuenta cambiar credenciales sin alertar al dueño original
-- Identificado en HackerOne (cambio de email sin notificación de éxito)
+- Email/password change without user notification (confirmation email missing or incomplete)
+- Allows an attacker who took over the account to change credentials without alerting the original owner
+- Identified at HackerOne (email change without success notification)
 
 ### WordPress authenticated arbitrary file deletion
-- WordPress <= 4.9.6: usuario autenticado puede eliminar archivos arbitrarios del servidor
-- Impacto: eliminar `wp-config.php` fuerza re-instalación y permite tomar control del sitio
-- Identificado en Shipt (www.shipt.com)
-- **Herramienta:** buscar versión WordPress en `/readme.html` o meta generator, aplicar PoC público
+- WordPress <= 4.9.6: authenticated user can delete arbitrary server files
+- Impact: deleting `wp-config.php` forces re-installation and allows site takeover
+- Identified at Shipt (www.shipt.com)
+- **Tool:** look for WordPress version in `/readme.html` or meta generator, apply public PoC
 
 ---
 
-## Contexto de metodología
+## Methodology context
 
-- Participación en **Live Hacking Events (LHE)**: BugCon MX, MercadoLibre MLM-2022 — buenos resultados en eventos presenciales con scope reducido y competencia en tiempo real.
-- Foco histórico: plataformas de mensajería, apps móviles iOS, sistemas de pagos, infraestructura legacy expuesta.
-- Estilo de reporte: pasos claros reproducibles, PoC funcional adjunto, impacto demostrado.
+- Participation in **Live Hacking Events (LHE)**: BugCon MX, MercadoLibre MLM-2022 — good results in on-site events with reduced scope and real-time competition.
+- Historical focus: messaging platforms, iOS mobile apps, payment systems, exposed legacy infrastructure.
+- Reporting style: clear reproducible steps, attached working PoC, demonstrated impact.

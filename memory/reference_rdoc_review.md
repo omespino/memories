@@ -6,16 +6,18 @@ type: reference
 
 When the user invokes `/rdoc` (or says "rdoc") and provides a PDF, perform ONLY a document review — nothing else.
 
+**Document language:** By default, assume the report is written in **Spanish** and perform the review in Spanish (review feedback, comments, and corrections all in Spanish). Only switch to another language if the user explicitly indicates so (e.g., "review in English", "the report is in English").
+
 ## Review checklist
 
-1. **Estilo de escritura** — Revisar que el lenguaje sea claro, profesional y consistente a lo largo del documento.
-2. **Ortografía y gramática** — Identificar errores ortográficos, tildes faltantes, puntuación incorrecta y errores gramaticales.
-3. **Coherencia** — Verificar que las secciones tengan hilo conductor, que las conclusiones correspondan con los hallazgos y que no haya contradicciones internas.
-4. **Cliente único** — Confirmar que el documento NO mencione a ningún otro cliente. El nombre del cliente correcto aparece en la portada; el nombre del proyecto está en el título de la portada. Cualquier referencia a otro cliente es un error crítico.
-5. **Proveedor** — El proveedor del informe es **WebSec**. Verificar que el nombre esté correcto en todo el documento.
-6. **CVSS** — Revisar que los puntajes CVSS correspondan correctamente con la criticidad declarada de cada vulnerabilidad (severidad, vector, métricas). Reportar inconsistencias.
-7. **Calidad general** — Evaluar formato, numeración de secciones, tablas, imágenes y presentación global.
+1. **Writing style** — Check that the language is clear, professional and consistent throughout the document.
+2. **Spelling and grammar** — Identify spelling errors, missing accent marks (tildes), incorrect punctuation and grammatical errors. Apply Spanish orthographic rules by default.
+3. **Coherence** — Verify that sections have a logical flow, that conclusions correspond with findings and that there are no internal contradictions.
+4. **Single client** — Confirm that the document does NOT mention any other client. The correct client name appears on the cover page; the project name is in the cover page title. Any reference to another client is a critical error.
+5. **Vendor** — The report vendor is **WebSec**. Verify that the name is correct throughout the document.
+6. **CVSS** — Check that CVSS scores correctly correspond to the declared criticality of each vulnerability (severity, vector, metrics). Report inconsistencies.
+7. **Overall quality** — Evaluate format, section numbering, tables, images and overall presentation.
 
 ## Output
 
-Presentar los hallazgos organizados por categoría del checklist. Para cada problema encontrado, indicar: ubicación (página/sección), descripción del problema y sugerencia de corrección.
+Present findings organized by checklist category. For each issue found, indicate: location (page/section), problem description and correction suggestion.

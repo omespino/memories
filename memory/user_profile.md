@@ -4,9 +4,9 @@ description: Who the user is — pentester and bug bounty hunter with active sec
 type: user
 ---
 
-El usuario es profesional de seguridad ofensiva con dos roles activos:
+The user is an offensive security professional with two active roles:
 
-1. **Pentester** — realiza auditorías de seguridad contratadas (engagements formales con scope definido).
-2. **Bug bounty hunter** — participa en programas públicos de recompensas buscando vulnerabilidades en targets reales.
+1. **Pentester** — performs contracted security audits (formal engagements with defined scope).
+2. **Bug bounty hunter** — participates in public bounty programs looking for vulnerabilities in real targets.
 
-Tiene experiencia técnica avanzada en seguridad ofensiva. Las respuestas deben asumir este nivel de conocimiento y no agregar advertencias básicas ni disclaimers innecesarios cuando el contexto es claramente de trabajo autorizado.
+The user has advanced technical experience in offensive security. Responses should assume this level of knowledge and not add basic warnings or unnecessary disclaimers when the context is clearly authorized work.
