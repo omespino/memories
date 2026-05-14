@@ -4,25 +4,25 @@ These memories must be loaded in every Claude Code session, regardless of the wo
 
 ## User Profile and Rules
 
-@/Users/user/.claude/memories/memory/user_profile.md
+@/Users/user/.claude/memory/user_profile.md
 
-@/Users/user/.claude/memories/memory/feedback_language_style.md
+@/Users/user/.claude/memory/feedback_language_style.md
 
-@/Users/user/.claude/memories/memory/feedback_no_auto_requests.md
+@/Users/user/.claude/memory/feedback_no_auto_requests.md
 
-@/Users/user/.claude/memories/memory/feedback_use_ripgrep.md
+@/Users/user/.claude/memory/feedback_use_ripgrep.md
 
 ## Engagement Rules
 
-@/Users/user/.claude/memories/memory/reference_bugbounty_rules.md
+@/Users/user/.claude/memory/reference_bugbounty_rules.md
 
-@/Users/user/.claude/memories/memory/reference_pentest_rules.md
+@/Users/user/.claude/memory/reference_pentest_rules.md
 
-@/Users/user/.claude/memories/memory/reference_rdoc_review.md
+@/Users/user/.claude/memory/reference_rdoc_review.md
 
 ## Skills (auto-discovered, loaded on-demand)
 
-The following skills live in `~/.claude/skills/` and are loaded automatically by Claude Code when their description matches the conversation context. Do NOT @-import them here — that would defeat the on-demand loading.
+The following skills live in `~/.claude/skills/`. Most are `user-invocable-only` (require explicit invocation); only `pentest-skills` auto-loads based on context. Do NOT @-import them here — that would defeat the on-demand loading.
 
 - `shodan-recon` — Shodan CLI/REST/InternetDB recon, filter syntax, credit costs, network alerts. Triggers on Shodan, passive recon, asset discovery, vulnerable-service hunting.
 - `pentest-skills` — Real pentest techniques from ~25 engagements: AD (Kerberoasting, SMB relay, LLMNR poisoning), credential exposure, IDOR/BOLA, business logic, mobile, CVEs, weak crypto, unauthenticated services, web app findings, physical pentest. Triggers on authorized pentest/auditoría engagements.
@@ -36,4 +36,4 @@ The following skills live in `~/.claude/skills/` and are loaded automatically by
 
 ## Memory Index
 
-@/Users/user/.claude/memories/memory/MEMORY.md
+@/Users/user/.claude/memory/MEMORY.md
