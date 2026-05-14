@@ -1,7 +1,6 @@
 ---
-name: BugCrowd Bug Bounty Skills
-description: Skills and techniques derived from omespino's real BugCrowd reports. Patterns, vectors, and methodologies that have produced confirmed findings.
-type: reference
+name: bugcrowd-bugbounty
+description: BugCrowd techniques from real resolved reports (Atlassian $300, Centrify $100, Skyscanner P2, Netflix P3, Segment P3, Trello P3, Tesla P5). Use when hunting on BugCrowd programs. Confirmed skills — stored XSS via Word .doc javascript: URI in iOS browsers (Atlassian Confluence; .docx does NOT reproduce); CVE-2018-0296 Cisco ASA path traversal unauth (sessions + dir index, Centrify/Criteo); Firebase exposure via APK + apktool + /.json check (Skyscanner); default creds on network gear in target ASN (Huawei S7706 admin/admin@huawei.com, Netflix); missing email domain verification for privilege escalation on B2B SaaS (Segment — register anything@target-domain.com); stored XSS via SVG in iOS with navigator fingerprinting (Trello iOS); SVG XSS via xlink:href + data URI base64 evading event-handler filters; API keys in APK assets/ via plain unzip (Tesla — env.json, google-services.json). Spanish triggers — "bugcrowd", "bug bounty en bugcrowd", "xss en doc", "firebase apk", "cisco asa cve", "credenciales por defecto en red".
 ---
 
 ## Findings profile (BugCrowd)

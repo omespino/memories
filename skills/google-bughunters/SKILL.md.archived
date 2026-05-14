@@ -1,8 +1,8 @@
 ---
-name: Google Bug Hunters Skills
-description: Skills and techniques derived from omespino's real bughunters.google.com reports. Chains, vectors, and methodologies that have produced confirmed findings against Google products.
-type: reference
+name: google-bughunters
+description: Personal Google VRP / Google Bug Hunters reports by omespino (bughunters.google.com). Use when the user is hunting on Google products, Google Cloud, Google Cloud Shell, Apigee, Google Earth, Google Fiber, Gmail/Drive iOS, GCP metadata endpoints, or any *.google.com / Google ASN target. Confirmed techniques — Google Cloud Shell instance takeover (XSS in .md preview via style onload, LFI via uri=file:// in /files/ endpoint, container escape via path traversal, exfiltration of id_cloudshell SSH private key, root SSH to devshell-vm-*.cloudshell.dev); Cloud Shell XSS vectors (SVG onload in Safari, filename injection via launch.json Debug Console, xlink:href data URI); LFI on Google prod servers via /procz?file= (DremelGateway 34.83.45.88, springboard.google.com /java/procz as gws-prod, Mobile Harness 100.8.125.10:9999 and 108.177.0.8:9999, UPI India payment gateway 34.120.121.40:443); Google debug endpoint enumeration (/labelaclz, /flagz, /procz, /streamz, /statusz, /varz, /reportcardz on 34.x/35.x/100.x/108.x/216.x ranges); Apigee Node.js Hosted Target RCE as root via child_process.exec; Gmail Android content:// URI email exfiltration; XSS in Google Earth Pro/iOS via KML (CDATA with onerror, script src file://, null byte %00 bypass); Chrome file:// loading /etc/environment as JS; SSRF in AMP Validator → GCP metadata 169.254.169.254; blind SSRF oracle in GCP Cloud Monitoring Uptime Check via 0.0.0.0 bypass and [::169.254.169.254]; mass IDOR enumeration on Android TV setup/lookup without rate limit; Google Fiber FTP anonymous and Telnet default creds on Brother/HP printers; Office .ppt javascript: hyperlink XSS in Gmail iOS / Drive iOS. Spanish triggers — "voy a hacer bug bounty en Google", "google vrp", "cloud vrp", "estoy en bughunters.google.com", "carga las skills de google", "necesito las técnicas de google vrp".
 ---
+
 
 ## Findings profile (Google Bug Hunters / VRP)
 

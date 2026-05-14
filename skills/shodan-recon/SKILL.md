@@ -1,8 +1,6 @@
 ---
-name: Shodan Reconnaissance
-description: Systematic methodology for using Shodan (web, CLI, REST API, InternetDB) for passive recon and authorized active scanning during pentests and bug bounty engagements.
-type: reference
-source: community (zebbern), curated 2026-05-09
+name: shodan-recon
+description: Shodan reconnaissance for authorized pentest and bug-bounty engagements. Use when the user mentions Shodan, asks for passive recon on a target organization/CIDR/domain/ASN, wants to find exposed services (databases, webcams, IoT, industrial control, RDP, VNC, FTP, MongoDB, Elasticsearch, Redis, Docker, Jenkins, Kubernetes), needs vulnerable-service hunting by CVE, asset discovery, SSL/TLS certificate analysis, or network monitoring with alerts. Covers CLI commands, REST API, InternetDB (free, no key), search filter syntax, on-demand scanning, credit costs, and free-vs-paid features. Spanish triggers — "shodan", "reconocimiento pasivo", "buscar expuestos", "internetdb", "scan submit", "filtros shodan".
 ---
 
 # Shodan Reconnaissance and Pentesting
@@ -420,31 +418,7 @@ shodan search 'ssl.cert.issuer.cn:self-signed'
 ```
 
 ### Example 5 — Python automation
-```python
-#!/usr/bin/env python3
-import shodan, time
-
-API_KEY = 'YOUR_API_KEY'
-api = shodan.Shodan(API_KEY)
-
-def recon_org(org_name):
-    query = f'org:"{org_name}"'
-    results = api.search(query)
-    print(f"[*] {results['total']} hosts for {org_name}")
-    hosts = {}
-    for r in results['matches']:
-        hosts.setdefault(r['ip_str'], []).append(
-            {'port': r['port'], 'product': r.get('product', 'unknown')}
-        )
-    for ip, svcs in hosts.items():
-        print(f"\n[+] {ip}")
-        for s in svcs:
-            print(f"    - {s['port']}/tcp ({s['product']})")
-    return hosts
-
-if __name__ == '__main__':
-    recon_org("Target Company")
-```
+See `scripts/recon_org.py` for a ready-to-use Python script that enumerates an organization's hosts and groups services by IP.
 
 ### Example 6 — Free CIDR sweep with InternetDB (no key, no credits)
 ```bash
@@ -476,6 +450,3 @@ shodan stream --alert ALERT_ID
 | Downloaded file won't parse | Truncated / corrupted gzip | `gunzip -t file.json.gz`; re-download with explicit `--limit` |
 | `country:"United States"` returns 0 | Filter requires ISO-2 code | Use `country:US` |
 | `vuln:` returns 0 always | Filter is paid (Small Business+) | Upgrade or use cached `internetdb.shodan.io/<ip>` for `vulns` field |
-
-## When to Use
-This skill applies whenever the user asks for Shodan-driven reconnaissance, asset discovery, vulnerable-service hunting, or network monitoring — for an authorized pentest or bug-bounty engagement.

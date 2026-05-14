@@ -1,8 +1,8 @@
 ---
-name: Google VRP Public Hall-of-Fame Skills
-description: Skills, techniques and bug-class catalog distilled from 201 public Google VRP / Cloud VRP / OSS VRP reports (2018–2026). Independent from omespino's personal report dataset (reference_bughunters_skills.md). Every report is ingested with target, vulnerability class and key technique.
-type: reference
+name: google-vrp-public-hof
+description: Catalog of 202 public Google VRP / Cloud VRP / OSS VRP / Mobile VRP reports (2018-2026) totaling $70.5M in rewards. Use when the user is hunting on Google products and needs the public Hall-of-Fame skill catalog — independent from omespino's personal reports (google-bughunters). Use it alongside that one for full coverage. Recurring patterns covered — GCP load balancer / CDN HTTP parser quirks (bare CR after method, non-ASCII chars in header names, chunk-ext BWS) for cache poisoning and Cloud Armor bypass via request smuggling; GitHub Actions pwn request (pull_request_target + checkout of fork SHA, persist-credentials, self-hosted runners, pom.xml injection, composite action input injection); postMessage targetOrigin bypass (endsWith origin check); Code-OSS / Theia / IDX exploits (webWorkerExtensionHostIframe parentOrigin, launch.json filename injection, debugger proxy RCE, _workstationAccessToken Login-CSRF); Android intent redirection, deep link hijacking, content provider abuse; Chrome / V8 / Skia browser bug classes; Linux kernel exploits (record $11.33M reward); ChromeOS escapes; Bazel/Blaze build system; Borg/Spanner internal abuse via debug endpoints; Pixel firmware / bootloader; Google Cloud IAM / Workload Identity bypass; OSS-Fuzz findings. Each report has target, vulnerability class and key technique. Spanish triggers — "google vrp", "cloud vrp", "oss vrp", "mobile vrp", "hall of fame de google", "técnicas públicas de google".
 ---
+
 
 # Google VRP Public Hall-of-Fame — Skills & Techniques
 

@@ -1,7 +1,6 @@
 ---
-name: HackerOne Bug Bounty Skills
-description: Skills and techniques derived from omespino's real HackerOne reports (43 reports, 9 resolved). Patterns, vectors, and methodologies that have produced confirmed findings.
-type: reference
+name: h1-bugbounty
+description: HackerOne techniques from 43 real reports (9 resolved: Slack, Yahoo Mail, Twitter, Criteo x3, MercadoLibre x2, Reddit). For HackerOne programs and Live Hacking Events (LHE). Confirmed — XSS via SVG/XML upload in iOS app viewers (Slack, Yahoo Mail); URL filter bypass via ASCII homoglyphs (MercadoLibre, Reddit, Bitly/TinyURL); SSRF in webhooks/IPN (Mercado Pago); subdomain takeover via Heroku dangling CNAME (Criteo); credential exposure via GitHub dorks (trufflehog, gitleaks); CVE-2018-0296 Cisco ASA path traversal; CVE-2019-11510 Pulse Secure VPN file read; SWEET32 / POODLE TLS detection on mail/VPN. Additional — APK/IPA secret extraction; XSS via .pptx javascript: links; SSRF via image URL / IPv6 bypass; auth bypass trailing slash (Zomato); GraphQL disclosure; WAF bypass SQLi case; SSH key on GitHub → RCE (Lyft); WordPress authenticated file deletion; XML Billion Laughs DoS. Spanish triggers — "hackerone", "h1", "bug bounty en h1", "live hacking event", "lhe".
 ---
 
 ## Findings profile (HackerOne)

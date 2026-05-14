@@ -1,0 +1,26 @@
+# Claude Code internals — never version these
+backups/
+cache/
+chrome/
+debug/
+downloads/
+file-history/
+paste-cache/
+plans/
+plugins/
+projects/
+session-env/
+sessions/
+shell-snapshots/
+statsig/
+tasks/
+telemetry/
+todos/
+history.jsonl
+stats-cache.json
+mcp-needs-auth-cache.json
+.last-cleanup
+.DS_Store
+
+# Symlink alias — real content is in memories/memory/
+/memory
