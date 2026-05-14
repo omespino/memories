@@ -21,6 +21,3 @@ stats-cache.json
 mcp-needs-auth-cache.json
 .last-cleanup
 .DS_Store
-
-# Symlink alias — real content is in memories/memory/
-/memory
